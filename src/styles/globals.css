@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+body {
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+:root {
+  --islamic-green: #2d5016;
+  --islamic-gold: #d4af37;
+  --islamic-blue: #1e40af;
+  --islamic-cream: #f7f3e9;
+}
+
+.status-urgent {
+  @apply bg-red-100 text-red-700 border-red-300;
+}
+
+.status-due {
+  @apply bg-yellow-100 text-yellow-700 border-yellow-300;
+}
+
+.status-recent {
+  @apply bg-green-100 text-green-700 border-green-300;
+}
+
+.gradient-islamic {
+  background: linear-gradient(135deg, #2d5016 0%, #16a085 100%);
+}

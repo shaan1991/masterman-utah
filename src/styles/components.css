@@ -1,0 +1,54 @@
+.btn-primary {
+  @apply bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors;
+}
+
+.btn-secondary {
+  @apply bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300 transition-colors;
+}
+
+.card {
+  @apply bg-white rounded-lg shadow-sm border p-4;
+}
+
+.brother-card {
+  @apply bg-white p-4 rounded-lg shadow-sm border hover:shadow-md transition-shadow cursor-pointer;
+}
+
+.form-input {
+  @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500;
+}
+
+.modal-overlay {
+  @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50;
+}
+
+.toggle-switch {
+  width: 2.75rem;
+  height: 1.5rem;
+  background-color: #e5e7eb;
+  border-radius: 9999px;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.toggle-switch:checked {
+  background-color: #16a34a;
+}
+
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  background-color: white;
+  border: 1px solid #d1d5db;
+  border-radius: 9999px;
+  height: 1.25rem;
+  width: 1.25rem;
+  transition: all 0.2s;
+}
+
+.toggle-switch:checked::after {
+  transform: translateX(1.25rem);
+  border-color: white;
+}

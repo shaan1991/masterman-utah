@@ -1,6 +1,8 @@
+// ===== public/manifest.json =====
 {
-  "short_name": "React App",
-  "name": "Create React App Sample",
+  "short_name": "Brotherhood",
+  "name": "Masterman - Utah",
+  "description": "Stay connected with your Islamic brothers through regular contact and spiritual goals",
   "icons": [
     {
       "src": "favicon.ico",
@@ -8,18 +10,19 @@
       "type": "image/x-icon"
     },
     {
-      "src": "logo192.png",
+      "src": "icon-192x192.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "logo512.png",
+      "src": "icon-512x512.png",
       "type": "image/png",
       "sizes": "512x512"
     }
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#2d5016",
+  "background_color": "#f7f3e9",
+  "orientation": "portrait-primary"
 }

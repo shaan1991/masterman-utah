@@ -1,25 +1,81 @@
-import logo from './logo.svg';
-import './App.css';
+import React, { useState } from 'react';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { BrothersProvider } from './contexts/BrothersContext';
+import { NotificationProvider } from './contexts/NotificationContext';
+import Layout from './components/common/Layout';
+import AuthScreen from './components/auth/AuthScreen';
+import LoadingSpinner from './components/common/LoadingSpinner';
+import ErrorBoundary from './components/common/ErrorBoundary';
+import NotificationBanner from './components/common/NotificationBanner';
+import OfflineIndicator from './components/common/OfflineIndicator';
 
-function App() {
+// Import page components
+import Dashboard from './components/dashboard/Dashboard';
+import BrotherhoodDirectory from './components/brothers/BrotherhoodDirectory';
+import DuaRequests from './components/dua/DuaRequests';
+import GoalTracking from './components/goals/GoalTracking';
+import Announcements from './components/announcements/Announcements';
+import Analytics from './components/analytics/Analytics';
+import Settings from './components/settings/Settings';
+
+// Import styles
+import './styles/globals.css';
+import './styles/components.css';
+
+const AppContent = () => {
+  const { user, loading } = useAuth();
+  const [currentPage, setCurrentPage] = useState('dashboard');
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  if (!user) {
+    return <AuthScreen />;
+  }
+
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'dashboard':
+        return <Dashboard />;
+      case 'brothers':
+        return <BrotherhoodDirectory />;
+      case 'dua':
+        return <DuaRequests />;
+      case 'goals':
+        return <GoalTracking />;
+      case 'announcements':
+        return <Announcements />;
+      case 'analytics':
+        return <Analytics />;
+      case 'settings':
+        return <Settings />;
+      default:
+        return <Dashboard />;
+    }
+  };
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <BrothersProvider>
+      <NotificationProvider>
+        <OfflineIndicator />
+        <Layout currentPage={currentPage} onPageChange={setCurrentPage}>
+          <NotificationBanner />
+          {renderPage()}
+        </Layout>
+      </NotificationProvider>
+    </BrothersProvider>
   );
-}
+};
+
+const App = () => {
+  return (
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppContent />
+      </AuthProvider>
+    </ErrorBoundary>
+  );
+};
 
 export default App;
