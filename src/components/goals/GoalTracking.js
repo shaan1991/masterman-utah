@@ -72,7 +72,7 @@ const GoalTracking = () => {
       </div>
 
       {/* Weekly Overview */}
-      <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white p-4 rounded-lg">
+      <div className="Black text-white p-4 rounded-lg">
         <h3 className="text-lg font-semibold mb-2">This Week's Progress</h3>
         <div className="grid grid-cols-2 gap-4">
           <div className="text-center">

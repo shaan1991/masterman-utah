@@ -31,3 +31,7 @@ body {
 .gradient-islamic {
   background: linear-gradient(135deg, #2d5016 0%, #16a085 100%);
 }
+
+.Black {
+  background: black;
+}

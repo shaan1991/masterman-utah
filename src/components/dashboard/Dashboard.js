@@ -14,7 +14,7 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white p-4 rounded-lg">
+      <div className="Black text-white p-4 rounded-lg">
         <h2 className="text-lg font-semibold">Assalamu Alaikum!</h2>
         <p className="text-sm opacity-90">
           May Allah bless your connections today

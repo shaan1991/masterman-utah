@@ -70,7 +70,7 @@ const ContactSuggestions = ({ brothers = [] }) => {
       
       {suggestions.length > 0 && (
         <div className="p-3 border-t bg-gray-50">
-          <button className="w-full text-center text-sm text-green-600 hover:text-green-700 font-medium">
+          <button className="w-full text-center text-sm text-black-600 hover:text-green-700 font-medium">
             View All Brothers
           </button>
         </div>
