@@ -1,45 +1,73 @@
-// ===== src/components/brothers/BrotherProfile.js =====
-import React, { useState } from 'react';
-import { Phone, MessageSquare, Mail, MapPin, Clock, Calendar, Star, Plus, Edit } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Phone, MessageSquare, Mail, MapPin, Clock, Calendar, Star, Plus, Edit, User } from 'lucide-react';
 import { formatDate, getDaysAgo } from '../../utils/dateHelpers';
 import LogInteraction from '../interactions/LogInteraction';
+import { useAuth } from '../../contexts/AuthContext';
+import { logInteraction, updateBrother, getInteractions } from '../../services/firestore';
+
 
 const BrotherProfile = ({ brother, onClose, onUpdate }) => {
+  const { user } = useAuth();
   const [showLogInteraction, setShowLogInteraction] = useState(false);
   const [activeTab, setActiveTab] = useState('info');
+  const [interactions, setInteractions] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const mockInteractions = [
-    {
-      id: '1',
-      method: 'call',
-      date: new Date('2025-06-15'),
-      duration: 25,
-      notes: 'Discussed his new job and upcoming move. He seems excited about the opportunities.',
-      rating: 5
-    },
-    {
-      id: '2',
-      method: 'text',
-      date: new Date('2025-06-10'),
-      notes: 'Quick check-in about his mother\'s health. She\'s doing better, Alhamdulillah.',
-      rating: 4
+  useEffect(() => {
+    if (user && brother.id) {
+      loadInteractions();
     }
-  ];
+  }, [user, brother.id]);
+
+  const loadInteractions = async () => {
+    const result = await getInteractions(user.uid, brother.id);
+    if (!result.error) {
+      setInteractions(result.data);
+    }
+  };
+
+  const handleLogInteraction = async (interactionData) => {
+    if (!user) return;
+    
+    setLoading(true);
+    try {
+      // Save interaction to Firestore
+      const result = await logInteraction(user.uid, {
+        ...interactionData,
+        brotherId: brother.id,
+        brotherName: brother.name,
+        timestamp: new Date()
+      });
+
+      if (!result.error) {
+        // Update brother's last contact info
+        await updateBrother(user.uid, brother.id, {
+          lastContact: new Date(),
+          lastContactMethod: interactionData.method
+        });
+
+        // Update local state
+        onUpdate({
+          ...brother,
+          lastContact: new Date(),
+          lastContactMethod: interactionData.method
+        });
+
+        setShowLogInteraction(false);
+        
+        // Refresh interactions list
+        loadInteractions();
+      } else {
+        console.error('Error logging interaction:', result.error);
+      }
+    } catch (error) {
+      console.error('Error logging interaction:', error);
+    }
+    setLoading(false);
+  };
 
   const getInitials = (name) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
-  };
-
-  const handleLogInteraction = (interactionData) => {
-    // In real app, this would save to Firestore
-    console.log('Logging interaction:', interactionData);
-    setShowLogInteraction(false);
-    // Update brother's last contact info
-    onUpdate({
-      ...brother,
-      lastContact: new Date(),
-      lastContactMethod: interactionData.method
-    });
   };
 
   const tabs = [
@@ -47,6 +75,36 @@ const BrotherProfile = ({ brother, onClose, onUpdate }) => {
     { id: 'history', label: 'History' },
     { id: 'notes', label: 'Notes' }
   ];
+
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return 'Unknown date';
+    
+    // Handle Firestore timestamp
+    const date = timestamp.seconds ? new Date(timestamp.seconds * 1000) : new Date(timestamp);
+    return date.toLocaleDateString() + ' at ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getMethodLabel = (method) => {
+    switch (method) {
+      case 'call': return 'Phone Call';
+      case 'text': return 'Text Message';
+      case 'email': return 'Email';
+      case 'whatsapp': return 'WhatsApp';
+      case 'in_person': return 'In Person';
+      default: return 'Contact';
+    }
+  };
+
+  const getMethodIcon = (method) => {
+    switch (method) {
+      case 'call': return <Phone className="w-3 h-3 text-green-600" />;
+      case 'text': 
+      case 'whatsapp': return <MessageSquare className="w-3 h-3 text-green-600" />;
+      case 'email': return <Mail className="w-3 h-3 text-green-600" />;
+      case 'in_person': return <User className="w-3 h-3 text-green-600" />;
+      default: return <MessageSquare className="w-3 h-3 text-green-600" />;
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-40">
@@ -91,10 +149,11 @@ const BrotherProfile = ({ brother, onClose, onUpdate }) => {
             </button>
             <button 
               onClick={() => setShowLogInteraction(true)}
-              className="flex-1 bg-purple-100 text-purple-700 py-2 px-3 rounded-md text-sm hover:bg-purple-200 flex items-center justify-center space-x-1"
+              disabled={loading}
+              className="flex-1 bg-purple-100 text-purple-700 py-2 px-3 rounded-md text-sm hover:bg-purple-200 flex items-center justify-center space-x-1 disabled:opacity-50"
             >
               <Plus className="w-4 h-4" />
-              <span>Log</span>
+              <span>{loading ? 'Saving...' : 'Log'}</span>
             </button>
           </div>
         </div>
@@ -108,7 +167,7 @@ const BrotherProfile = ({ brother, onClose, onUpdate }) => {
                 <Clock className="w-3 h-3" />
                 <span>
                   {brother.lastContact 
-                    ? `${getDaysAgo(brother.lastContact)} days ago (${formatDate(brother.lastContact)})`
+                    ? `${getDaysAgo(brother.lastContact)} days ago`
                     : 'Never contacted'
                   }
                 </span>
@@ -175,32 +234,35 @@ const BrotherProfile = ({ brother, onClose, onUpdate }) => {
 
           {activeTab === 'history' && (
             <div className="space-y-3">
-              {mockInteractions.length === 0 ? (
-                <p className="text-center text-gray-500 py-8">No interaction history</p>
+              {interactions.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                  <p>No interactions recorded yet</p>
+                  <p className="text-sm mt-1">Start logging your conversations</p>
+                </div>
               ) : (
-                mockInteractions.map(interaction => (
-                  <div key={interaction.id} className="border rounded-lg p-3">
+                interactions.map((interaction) => (
+                  <div key={interaction.id} className="bg-gray-50 border rounded-lg p-3">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-2">
-                        {interaction.method === 'call' && <Phone className="w-4 h-4 text-green-600" />}
-                        {interaction.method === 'text' && <MessageSquare className="w-4 h-4 text-blue-600" />}
-                        {interaction.method === 'email' && <Mail className="w-4 h-4 text-gray-600" />}
-                        <span className="text-sm font-medium text-gray-800">
-                          {interaction.method === 'call' ? 'Phone Call' : 
-                           interaction.method === 'text' ? 'Text Message' : 'Email'}
+                        <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
+                          {getMethodIcon(interaction.method)}
+                        </div>
+                        <span className="text-sm font-medium text-gray-700">
+                          {getMethodLabel(interaction.method)}
                         </span>
                       </div>
                       <div className="flex items-center space-x-1">
-                        {[...Array(interaction.rating)].map((_, i) => (
+                        {[...Array(interaction.rating || 5)].map((_, i) => (
                           <Star key={i} className="w-3 h-3 text-yellow-400 fill-current" />
                         ))}
                       </div>
                     </div>
                     
-                    <p className="text-sm text-gray-600 mb-2">{interaction.notes}</p>
+                    <p className="text-sm text-gray-600 mb-2">{interaction.notes || 'No notes added'}</p>
                     
                     <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span>{formatDate(interaction.date)}</span>
+                      <span>{formatTimestamp(interaction.timestamp)}</span>
                       {interaction.duration && (
                         <span>{interaction.duration} minutes</span>
                       )}
@@ -248,4 +310,4 @@ const BrotherProfile = ({ brother, onClose, onUpdate }) => {
   );
 };
 
-export default BrotherProfile;export default StravaIntegration;
+export default BrotherProfile;

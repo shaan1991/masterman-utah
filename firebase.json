@@ -1,9 +1,9 @@
 {
   "hosting": {
-    "public": "y",
+    "public": "build",  // Should be "build" not "y"
     "ignore": [
       "firebase.json",
-      "**/.*",
+      "**/.*", 
       "**/node_modules/**"
     ],
     "rewrites": [

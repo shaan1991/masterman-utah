@@ -1,19 +1,71 @@
-// ===== src/components/dua/DuaCard.js =====
 import React, { useState } from 'react';
 import { Heart, MessageCircle, Clock, Star } from 'lucide-react';
 import { formatDate } from '../../utils/dateHelpers';
+import { useAuth } from '../../contexts/AuthContext';
+import { updateDoc, doc, arrayUnion } from 'firebase/firestore';
+import { db } from '../../services/firebase';
 
-const DuaCard = ({ dua }) => {
-  const [hasResponded, setHasResponded] = useState(false);
+const DuaCard = ({ dua, onUpdate }) => {
+  const { user } = useAuth();
+  const [hasResponded, setHasResponded] = useState(
+  (dua.responses || []).includes(user?.uid) || false
+);
+  const [loading, setLoading] = useState(false);
 
-  const handleAmeen = () => {
-    setHasResponded(true);
-    // Add API call to record response
+  const handleAmeen = async () => {
+    if (!user || hasResponded || loading) return;
+    
+    setLoading(true);
+    try {
+      const duaRef = doc(db, 'duaRequests', dua.id);
+      await updateDoc(duaRef, {
+        responses: arrayUnion(user.uid),
+        responseCount: (dua.responseCount || 0) + 1
+      });
+      
+      setHasResponded(true);
+      
+      // Update local state if onUpdate provided
+      if (onUpdate) {
+        onUpdate({
+          ...dua,
+          responses: [...(dua.responses || []), user.uid],
+          responseCount: (dua.responseCount || 0) + 1
+        });
+      }
+    } catch (error) {
+      console.error('Error saying Ameen:', error);
+    }
+    setLoading(false);
   };
 
-  const handleMarkAnswered = () => {
-    // Add API call to mark as answered
+  const handleMarkAnswered = async () => {
+    if (!user || dua.authorId !== user.uid) return;
+    
+    setLoading(true);
+    try {
+      const duaRef = doc(db, 'duaRequests', dua.id);
+      await updateDoc(duaRef, {
+        answered: true,
+        answeredAt: new Date(),
+        answeredNote: 'Alhamdulillah, this prayer has been answered.'
+      });
+      
+      if (onUpdate) {
+        onUpdate({
+          ...dua,
+          answered: true,
+          answeredAt: new Date(),
+          answeredNote: 'Alhamdulillah, this prayer has been answered.'
+        });
+      }
+    } catch (error) {
+      console.error('Error marking as answered:', error);
+    }
+    setLoading(false);
   };
+
+  const isOwner = dua.authorId === user?.uid;
 
   return (
     <div className="bg-white p-4 rounded-lg shadow-sm border">
@@ -61,7 +113,7 @@ const DuaCard = ({ dua }) => {
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-1 text-xs text-gray-500">
             <Heart className="w-3 h-3" />
-            <span>{dua.responses || 0} responses</span>
+            <span>{dua.responseCount || 0} responses</span>
           </div>
           
           <div className="flex items-center space-x-1 text-xs text-gray-500">
@@ -73,24 +125,17 @@ const DuaCard = ({ dua }) => {
         <div className="flex space-x-2">
           <button
             onClick={handleAmeen}
-            disabled={hasResponded}
+            disabled={hasResponded || loading}
             className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
               hasResponded
                 ? 'bg-green-100 text-green-700'
                 : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
             }`}
           >
-            {hasResponded ? 'Ameen Said ✓' : 'Say Ameen'}
+            {loading ? 'Saving...' : hasResponded ? 'Ameen Said ✓' : 'Say Ameen'}
           </button>
           
-          {!dua.answered && dua.isOwner && (
-            <button
-              onClick={handleMarkAnswered}
-              className="px-3 py-1 bg-green-100 text-green-700 rounded-md text-xs font-medium hover:bg-green-200"
-            >
-              Mark Answered
-            </button>
-          )}
+          
         </div>
       </div>
       

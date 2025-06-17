@@ -1,4 +1,3 @@
-// ===== src/components/dua/DuaForm.js =====
 import React, { useState } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -6,35 +5,44 @@ import { addDuaRequest } from '../../services/firestore';
 
 const DuaForm = ({ onClose, onSubmit }) => {
   const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     request: '',
     urgent: false,
     anonymous: false
   });
-  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.request.trim()) return;
+    if (!formData.request.trim() || !user) return;
 
     setLoading(true);
-    
-    const duaData = {
-      request: formData.request.trim(),
-      urgent: formData.urgent,
-      authorId: user.uid,
-      authorName: formData.anonymous ? null : user.displayName,
-      authorEmail: formData.anonymous ? null : user.email
-    };
-
     try {
-      await addDuaRequest(duaData);
-      onSubmit(duaData);
+      const duaData = {
+        request: formData.request.trim(),
+        urgent: formData.urgent,
+        anonymous: formData.anonymous,
+        authorId: user.uid,
+        authorName: formData.anonymous ? null : user.displayName,
+        authorEmail: formData.anonymous ? null : user.email,
+        responses: [],
+        responseCount: 0,
+        answered: false,
+        comments: 0
+      };
+
+      const result = await addDuaRequest(duaData);
+      
+      if (!result.error) {
+        onSubmit && onSubmit(duaData);
+        onClose();
+      } else {
+        console.error('Error submitting dua:', result.error);
+      }
     } catch (error) {
-      console.error('Error submitting dua request:', error);
-    } finally {
-      setLoading(false);
+      console.error('Error submitting dua:', error);
     }
+    setLoading(false);
   };
 
   return (
@@ -44,27 +52,30 @@ const DuaForm = ({ onClose, onSubmit }) => {
           <h3 className="text-lg font-semibold text-gray-800">Request Dua</h3>
           <button
             onClick={onClose}
-            className="p-1 text-gray-500 hover:text-gray-700"
+            className="text-gray-400 hover:text-gray-600"
           >
-            <X className="w-5 h-5" />
+            <X className="w-6 h-6" />
           </button>
         </div>
         
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Please make dua for...
+              What do you need prayers for?
             </label>
             <textarea
               value={formData.request}
               onChange={(e) => setFormData({...formData, request: e.target.value})}
-              placeholder="Share what you'd like the brotherhood to pray for..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+              placeholder="Please keep your brothers in your prayers for..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm resize-none"
               rows="4"
               required
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Be specific but respectful. Your brothers want to support you.
+          </div>
+          
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-sm text-blue-800">
+              Your brothers want to support you through prayer. Share what's on your heart.
             </p>
           </div>
           

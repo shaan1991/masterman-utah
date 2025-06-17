@@ -1,14 +1,19 @@
-// ===== src/components/brothers/BrotherhoodDirectory.js =====
 import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
 import SearchFilter from './SearchFilter';
 import BrotherCard from './BrotherCard';
+import BrotherProfile from './BrotherProfile';
+import AddBrotherForm from './AddBrotherForm';
 import { useBrothers } from '../../contexts/BrothersContext';
+import { useBrothers as useBrothersHook } from '../../hooks/useBrothers';
 
 const BrotherhoodDirectory = () => {
   const { brothers, loading } = useBrothers();
+  const { addNewBrother, updateBrotherInfo } = useBrothersHook();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [selectedBrother, setSelectedBrother] = useState(null);
 
   const filteredBrothers = brothers.filter(brother => {
     const matchesSearch = brother.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -32,6 +37,15 @@ const BrotherhoodDirectory = () => {
     }
   });
 
+  const handleAddBrother = async (brotherData) => {
+    return await addNewBrother(brotherData);
+  };
+
+  const handleUpdateBrother = async (updatedBrother) => {
+    await updateBrotherInfo(updatedBrother.id, updatedBrother);
+    setSelectedBrother(updatedBrother);
+  };
+
   if (loading) {
     return <div className="text-center py-8">Loading brothers...</div>;
   }
@@ -40,7 +54,10 @@ const BrotherhoodDirectory = () => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-gray-800">Brotherhood Directory</h2>
-        <button className="bg-green-600 text-white p-2 rounded-full hover:bg-green-700">
+        <button 
+          onClick={() => setShowAddForm(true)}
+          className="bg-green-600 text-white p-2 rounded-full hover:bg-green-700"
+        >
           <Plus className="w-5 h-5" />
         </button>
       </div>
@@ -58,7 +75,11 @@ const BrotherhoodDirectory = () => {
       
       <div className="space-y-3">
         {filteredBrothers.map(brother => (
-          <BrotherCard key={brother.id} brother={brother} />
+          <BrotherCard 
+            key={brother.id} 
+            brother={brother} 
+            onClick={() => setSelectedBrother(brother)}
+          />
         ))}
         
         {filteredBrothers.length === 0 && (
@@ -67,6 +88,23 @@ const BrotherhoodDirectory = () => {
           </div>
         )}
       </div>
+
+      {/* Add Brother Form Modal */}
+      {showAddForm && (
+        <AddBrotherForm
+          onClose={() => setShowAddForm(false)}
+          onSave={handleAddBrother}
+        />
+      )}
+
+      {/* Brother Profile Modal */}
+      {selectedBrother && (
+        <BrotherProfile
+          brother={selectedBrother}
+          onClose={() => setSelectedBrother(null)}
+          onUpdate={handleUpdateBrother}
+        />
+      )}
     </div>
   );
 };

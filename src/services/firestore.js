@@ -1,4 +1,3 @@
-// ===== Updated src/services/firestore.js =====
 import { 
   collection, 
   doc, 
@@ -97,6 +96,24 @@ export const logInteraction = async (userId, interactionData) => {
     return { id: docRef.id, error: null };
   } catch (error) {
     return { id: null, error: error.message };
+  }
+};
+
+export const getInteractions = async (userId, brotherId) => {
+  try {
+    const q = query(
+      collection(db, 'users', userId, 'interactions'),
+      where('brotherId', '==', brotherId),
+      orderBy('timestamp', 'desc')
+    );
+    const snapshot = await getDocs(q);
+    const interactions = [];
+    snapshot.forEach(doc => {
+      interactions.push({ id: doc.id, ...doc.data() });
+    });
+    return { data: interactions, error: null };
+  } catch (error) {
+    return { data: [], error: error.message };
   }
 };
 
