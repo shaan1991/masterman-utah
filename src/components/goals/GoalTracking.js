@@ -1,18 +1,17 @@
-// ===== src/components/goals/GoalTracking.js =====
 import React, { useState } from 'react';
 import { Plus, Target, Calendar, TrendingUp } from 'lucide-react';
 import GoalCard from './GoalCard';
+import AddGoalForm from './AddGoalForm';
 import StravaIntegration from './StravaIntegration';
-import { GOAL_TYPES } from '../../utils/constants';
 
 const GoalTracking = () => {
   const [goals, setGoals] = useState([
     {
       id: '1',
-      type: GOAL_TYPES.QURAN,
+      type: 'quran',
       title: 'Daily Quran Reading',
       description: 'Read 2 pages of Quran daily',
-      target: 14, // pages per week
+      target: 14,
       progress: 10,
       streak: 5,
       lastCompleted: new Date(),
@@ -20,10 +19,10 @@ const GoalTracking = () => {
     },
     {
       id: '2',
-      type: GOAL_TYPES.DHIKR,
+      type: 'dhikr',
       title: 'Morning Adhkar',
       description: 'Complete morning remembrance daily',
-      target: 7, // days per week
+      target: 7,
       progress: 5,
       streak: 3,
       lastCompleted: new Date(),
@@ -31,7 +30,7 @@ const GoalTracking = () => {
     },
     {
       id: '3',
-      type: GOAL_TYPES.SALAH,
+      type: 'salah',
       title: 'Tahajjud Prayer',
       description: 'Wake for night prayer 3 times per week',
       target: 3,
@@ -43,6 +42,15 @@ const GoalTracking = () => {
   ]);
 
   const [showAddForm, setShowAddForm] = useState(false);
+
+  const handleAddGoal = (newGoal) => {
+    setGoals([...goals, newGoal]);
+    setShowAddForm(false);
+  };
+
+  const handleUpdateGoal = (updatedGoal) => {
+    setGoals(goals.map(g => g.id === updatedGoal.id ? updatedGoal : g));
+  };
 
   const weeklyStats = {
     totalGoals: goals.length,
@@ -104,9 +112,7 @@ const GoalTracking = () => {
           <GoalCard 
             key={goal.id} 
             goal={goal}
-            onUpdate={(updatedGoal) => {
-              setGoals(goals.map(g => g.id === updatedGoal.id ? updatedGoal : g));
-            }}
+            onUpdate={handleUpdateGoal}
           />
         ))}
       </div>
@@ -124,6 +130,14 @@ const GoalTracking = () => {
           <p className="text-xs text-gray-500">- Quran 65:3</p>
         </div>
       </div>
+
+      {/* Add Goal Form Modal */}
+      {showAddForm && (
+        <AddGoalForm
+          onClose={() => setShowAddForm(false)}
+          onSave={handleAddGoal}
+        />
+      )}
     </div>
   );
 };
