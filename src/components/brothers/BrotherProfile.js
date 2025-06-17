@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Phone, MessageSquare, Mail, MapPin, Clock, Calendar, Star, Plus, Edit, User } from 'lucide-react';
+import { Phone, MessageSquare, Mail, MapPin, Clock, Calendar, Star, Plus, Edit, User, Trash2, MoreVertical } from 'lucide-react';
 import { formatDate, getDaysAgo } from '../../utils/dateHelpers';
 import LogInteraction from '../interactions/LogInteraction';
 import { useAuth } from '../../contexts/AuthContext';
-import { logInteraction, updateBrother, getInteractions } from '../../services/firestore';
-
+import { logInteraction, updateBrother, getInteractions, updateInteraction, deleteInteraction } from '../../services/firestore';
 
 const BrotherProfile = ({ brother, onClose, onUpdate }) => {
   const { user } = useAuth();
   const [showLogInteraction, setShowLogInteraction] = useState(false);
+  const [editingInteraction, setEditingInteraction] = useState(null);
   const [activeTab, setActiveTab] = useState('info');
   const [interactions, setInteractions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -20,9 +20,13 @@ const BrotherProfile = ({ brother, onClose, onUpdate }) => {
   }, [user, brother.id]);
 
   const loadInteractions = async () => {
-    const result = await getInteractions(user.uid, brother.id);
-    if (!result.error) {
-      setInteractions(result.data);
+    try {
+      const result = await getInteractions(user.uid, brother.id);
+      if (!result.error) {
+        setInteractions(result.data);
+      }
+    } catch (error) {
+      console.error('Error loading interactions:', error);
     }
   };
 
@@ -31,22 +35,28 @@ const BrotherProfile = ({ brother, onClose, onUpdate }) => {
     
     setLoading(true);
     try {
-      // Save interaction to Firestore
-      const result = await logInteraction(user.uid, {
-        ...interactionData,
-        brotherId: brother.id,
-        brotherName: brother.name,
-        timestamp: new Date()
-      });
+      let result;
+      
+      if (editingInteraction) {
+        // Update existing interaction
+        result = await updateInteraction(user.uid, editingInteraction.id, interactionData);
+        setEditingInteraction(null);
+      } else {
+        // Create new interaction
+        result = await logInteraction(user.uid, {
+          ...interactionData,
+          brotherId: brother.id,
+          brotherName: brother.name,
+          timestamp: new Date()
+        });
+      }
 
       if (!result.error) {
-        // Update brother's last contact info
         await updateBrother(user.uid, brother.id, {
           lastContact: new Date(),
           lastContactMethod: interactionData.method
         });
-
-        // Update local state
+        
         onUpdate({
           ...brother,
           lastContact: new Date(),
@@ -54,16 +64,34 @@ const BrotherProfile = ({ brother, onClose, onUpdate }) => {
         });
 
         setShowLogInteraction(false);
-        
-        // Refresh interactions list
-        loadInteractions();
+        await loadInteractions();
       } else {
-        console.error('Error logging interaction:', result.error);
+        alert('Error saving interaction: ' + result.error);
       }
     } catch (error) {
-      console.error('Error logging interaction:', error);
+      alert('Exception: ' + error.message);
     }
     setLoading(false);
+  };
+
+  const handleEditInteraction = (interaction) => {
+    setEditingInteraction(interaction);
+    setShowLogInteraction(true);
+  };
+
+  const handleDeleteInteraction = async (interactionId) => {
+    if (!window.confirm('Delete this interaction?')) return;
+    
+    try {
+      const result = await deleteInteraction(user.uid, interactionId);
+      if (!result.error) {
+        await loadInteractions();
+      } else {
+        alert('Error deleting interaction: ' + result.error);
+      }
+    } catch (error) {
+      alert('Exception: ' + error.message);
+    }
   };
 
   const getInitials = (name) => {
@@ -79,7 +107,6 @@ const BrotherProfile = ({ brother, onClose, onUpdate }) => {
   const formatTimestamp = (timestamp) => {
     if (!timestamp) return 'Unknown date';
     
-    // Handle Firestore timestamp
     const date = timestamp.seconds ? new Date(timestamp.seconds * 1000) : new Date(timestamp);
     return date.toLocaleDateString() + ' at ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
@@ -148,7 +175,10 @@ const BrotherProfile = ({ brother, onClose, onUpdate }) => {
               <span>Text</span>
             </button>
             <button 
-              onClick={() => setShowLogInteraction(true)}
+              onClick={() => {
+                setEditingInteraction(null);
+                setShowLogInteraction(true);
+              }}
               disabled={loading}
               className="flex-1 bg-purple-100 text-purple-700 py-2 px-3 rounded-md text-sm hover:bg-purple-200 flex items-center justify-center space-x-1 disabled:opacity-50"
             >
@@ -242,7 +272,7 @@ const BrotherProfile = ({ brother, onClose, onUpdate }) => {
                 </div>
               ) : (
                 interactions.map((interaction) => (
-                  <div key={interaction.id} className="bg-gray-50 border rounded-lg p-3">
+                  <div key={interaction.id} className="bg-gray-50 border rounded-lg p-3 relative">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-2">
                         <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
@@ -252,10 +282,48 @@ const BrotherProfile = ({ brother, onClose, onUpdate }) => {
                           {getMethodLabel(interaction.method)}
                         </span>
                       </div>
-                      <div className="flex items-center space-x-1">
-                        {[...Array(interaction.rating || 5)].map((_, i) => (
-                          <Star key={i} className="w-3 h-3 text-yellow-400 fill-current" />
-                        ))}
+                      <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-1">
+                          {[...Array(interaction.rating || 5)].map((_, i) => (
+                            <Star key={i} className="w-3 h-3 text-yellow-400 fill-current" />
+                          ))}
+                        </div>
+                        <div className="relative">
+                          <button
+                            onClick={() => {
+                              const menu = document.getElementById(`menu-${interaction.id}`);
+                              menu.classList.toggle('hidden');
+                            }}
+                            className="p-1 text-gray-400 hover:text-gray-600"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </button>
+                          <div 
+                            id={`menu-${interaction.id}`}
+                            className="hidden absolute right-0 mt-1 bg-white border rounded-lg shadow-lg z-10 min-w-[120px]"
+                          >
+                            <button
+                              onClick={() => {
+                                handleEditInteraction(interaction);
+                                document.getElementById(`menu-${interaction.id}`).classList.add('hidden');
+                              }}
+                              className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center space-x-2"
+                            >
+                              <Edit className="w-3 h-3" />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                handleDeleteInteraction(interaction.id);
+                                document.getElementById(`menu-${interaction.id}`).classList.add('hidden');
+                              }}
+                              className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              <span>Delete</span>
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                     
@@ -302,8 +370,12 @@ const BrotherProfile = ({ brother, onClose, onUpdate }) => {
         <LogInteraction
           brotherId={brother.id}
           brotherName={brother.name}
+          initialData={editingInteraction}
           onSave={handleLogInteraction}
-          onCancel={() => setShowLogInteraction(false)}
+          onCancel={() => {
+            setShowLogInteraction(false);
+            setEditingInteraction(null);
+          }}
         />
       )}
     </div>

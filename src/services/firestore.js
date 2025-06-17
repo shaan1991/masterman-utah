@@ -99,17 +99,43 @@ export const logInteraction = async (userId, interactionData) => {
   }
 };
 
+export const updateInteraction = async (userId, interactionId, updateData) => {
+  try {
+    await updateDoc(doc(db, 'users', userId, 'interactions', interactionId), {
+      ...updateData,
+      updatedAt: serverTimestamp()
+    });
+    return { error: null };
+  } catch (error) {
+    return { error: error.message };
+  }
+};
+
+export const deleteInteraction = async (userId, interactionId) => {
+  try {
+    await deleteDoc(doc(db, 'users', userId, 'interactions', interactionId));
+    return { error: null };
+  } catch (error) {
+    return { error: error.message };
+  }
+};
+
 export const getInteractions = async (userId, brotherId) => {
   try {
     const q = query(
       collection(db, 'users', userId, 'interactions'),
-      where('brotherId', '==', brotherId),
-      orderBy('timestamp', 'desc')
+      where('brotherId', '==', brotherId)
     );
     const snapshot = await getDocs(q);
     const interactions = [];
     snapshot.forEach(doc => {
       interactions.push({ id: doc.id, ...doc.data() });
+    });
+    // Sort in JavaScript instead of Firestore
+    interactions.sort((a, b) => {
+      const aTime = a.timestamp?.seconds ? new Date(a.timestamp.seconds * 1000) : new Date(a.timestamp);
+      const bTime = b.timestamp?.seconds ? new Date(b.timestamp.seconds * 1000) : new Date(b.timestamp);
+      return bTime - aTime;
     });
     return { data: interactions, error: null };
   } catch (error) {
