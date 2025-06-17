@@ -1,7 +1,8 @@
-// ===== src/components/announcements/Announcements.js =====
+// src/components/announcements/Announcements.js
 import React, { useState } from 'react';
 import { Plus, Filter, MessageSquare } from 'lucide-react';
 import AnnouncementCard from './AnnouncementCard';
+import AnnouncementForm from './AnnouncementForm';
 
 const Announcements = () => {
   const [announcements, setAnnouncements] = useState([
@@ -51,9 +52,6 @@ const Announcements = () => {
     if (filter === 'all') return true;
     return announcement.type === filter;
   }).sort((a, b) => {
-    // Pinned posts first, then by timestamp
-    if (a.isPinned && !b.isPinned) return -1;
-    if (!a.isPinned && b.isPinned) return 1;
     return new Date(b.timestamp) - new Date(a.timestamp);
   });
 
@@ -63,6 +61,21 @@ const Announcements = () => {
     { value: 'achievement', label: 'Achievements' },
     { value: 'event', label: 'Events' }
   ];
+
+  const handleSaveAnnouncement = (announcementData) => {
+    const newAnnouncement = {
+      id: Date.now().toString(),
+      author: 'Current User', // Replace with actual user data
+      authorId: 'current-user-id',
+      timestamp: new Date(),
+      likes: 0,
+      comments: 0,
+      isLiked: false,
+      ...announcementData
+    };
+    setAnnouncements(prev => [newAnnouncement, ...prev]);
+    setShowForm(false);
+  };
 
   return (
     <div className="space-y-4">
@@ -121,6 +134,14 @@ const Announcements = () => {
           ))
         )}
       </div>
+
+      {/* Add Announcement Form Modal */}
+      {showForm && (
+        <AnnouncementForm
+          onClose={() => setShowForm(false)}
+          onSave={handleSaveAnnouncement}
+        />
+      )}
     </div>
   );
 };

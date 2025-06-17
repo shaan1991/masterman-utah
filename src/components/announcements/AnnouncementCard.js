@@ -1,6 +1,6 @@
-// ===== src/components/announcements/AnnouncementCard.js =====
+// src/components/announcements/AnnouncementCard.js
 import React, { useState } from 'react';
-import { Heart, MessageCircle, Share, Pin, Calendar, Trophy, User } from 'lucide-react';
+import { Heart, MessageCircle, Share, Calendar, Trophy, User } from 'lucide-react';
 import { formatDate } from '../../utils/dateHelpers';
 
 const AnnouncementCard = ({ announcement, onUpdate }) => {
@@ -39,13 +39,6 @@ const AnnouncementCard = ({ announcement, onUpdate }) => {
 
   return (
     <div className="bg-white rounded-lg shadow-sm border">
-      {announcement.isPinned && (
-        <div className="bg-green-50 border-b border-green-200 px-4 py-2 flex items-center space-x-2">
-          <Pin className="w-4 h-4 text-green-600" />
-          <span className="text-sm text-green-700 font-medium">Pinned Announcement</span>
-        </div>
-      )}
-      
       <div className="p-4">
         {/* Header */}
         <div className="flex items-start space-x-3 mb-3">
