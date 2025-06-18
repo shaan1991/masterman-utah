@@ -1,22 +1,16 @@
-// ===== src/components/settings/NotificationSettings.js =====
-import React, { useState } from 'react';
-import { Bell, Clock, Heart, MessageSquare } from 'lucide-react';
+// src/components/settings/NotificationSettings.js
+import React from 'react';
+import { Bell, Clock, Heart, MessageSquare, Target } from 'lucide-react';
+import { useNotifications } from '../../contexts/NotificationContext';
 
 const NotificationSettings = () => {
-  const [notifications, setNotifications] = useState({
-    weeklyReminders: true,
-    duaRequests: true,
-    announcements: false,
-    goalReminders: true,
-    urgentDuas: true,
-    brotherUpdates: false
-  });
+  const { settings, updateSettings } = useNotifications();
 
   const handleToggle = (key) => {
-    setNotifications(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
+    updateSettings({
+      ...settings,
+      [key]: !settings[key]
+    });
   };
 
   const notificationOptions = [
@@ -50,7 +44,7 @@ const NotificationSettings = () => {
     },
     {
       key: 'goalReminders',
-      icon: Bell,
+      icon: Target,
       title: 'Spiritual Goal Reminders',
       description: 'Reminders for your daily spiritual goals',
       color: 'text-purple-600'
@@ -79,32 +73,24 @@ const NotificationSettings = () => {
           return (
             <div key={option.key} className="flex items-start justify-between">
               <div className="flex items-start space-x-3 flex-1">
-                <Icon className={`w-5 h-5 ${option.color} mt-1`} />
+                <Icon className={`w-5 h-5 ${option.color} mt-0.5`} />
                 <div>
-                  <p className="font-medium text-gray-800 text-sm">{option.title}</p>
+                  <h4 className="text-sm font-medium text-gray-800">{option.title}</h4>
                   <p className="text-xs text-gray-600 mt-1">{option.description}</p>
                 </div>
               </div>
-              
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
                   type="checkbox"
-                  checked={notifications[option.key]}
+                  checked={settings[option.key]}
                   onChange={() => handleToggle(option.key)}
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
               </label>
             </div>
           );
         })}
-        
-        <div className="pt-3 border-t border-gray-100">
-          <p className="text-xs text-gray-500">
-            You can change these settings anytime. Critical notifications like urgent dua requests 
-            will always be delivered regardless of your preferences.
-          </p>
-        </div>
       </div>
     </div>
   );

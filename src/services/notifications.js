@@ -23,7 +23,7 @@ export const requestNotificationPermission = async () => {
 export const getNotificationToken = async () => {
   try {
     const token = await getToken(messaging, {
-      vapidKey: process.env.REACT_APP_VAPID_KEY // You'll need to add this to your env
+      vapidKey: process.env.REACT_APP_VAPID_KEY
     });
     return token;
   } catch (error) {
@@ -43,7 +43,6 @@ export const onMessageListener = () =>
 // Local notification helpers
 export const showLocalNotification = (title, body, options = {}) => {
   if ('Notification' in window && Notification.permission === 'granted') {
-    // Remove actions from options as they're not supported in local notifications
     const { actions, ...cleanOptions } = options;
     new Notification(title, {
       body,
@@ -64,13 +63,7 @@ export const notificationTypes = {
   BROTHER_UPDATE: 'brother_update'
 };
 
-// Schedule weekly contact reminders
-export const scheduleWeeklyReminder = () => {
-  // This would integrate with a backend service or use local scheduling
-  console.log('Weekly reminder scheduled');
-};
-
-// Send dua request notification
+// Enhanced notification handlers for different contexts
 export const sendDuaNotification = (duaRequest) => {
   const title = duaRequest.urgent ? '🚨 Urgent Dua Request' : '🤲 New Dua Request';
   const body = duaRequest.anonymous 
@@ -83,7 +76,6 @@ export const sendDuaNotification = (duaRequest) => {
   });
 };
 
-// Send goal reminder notification
 export const sendGoalReminder = (goal) => {
   const title = '🎯 Spiritual Goal Reminder';
   const body = `Time for your ${goal.title}`;
@@ -93,15 +85,49 @@ export const sendGoalReminder = (goal) => {
   });
 };
 
-// Send contact reminder notification
 export const sendContactReminder = (brothers) => {
   const count = brothers.length;
   const title = '📞 Brotherhood Contact Reminder';
   const body = count === 1 
-    ? `Time to connect with ${brothers[0].name}`
-    : `You have ${count} brothers to contact this week`;
+    ? `Check in with ${brothers[0].name}`
+    : `You have ${count} brothers to connect with`;
   
   showLocalNotification(title, body, {
     tag: 'contact-reminder'
   });
+};
+
+export const sendAnnouncementNotification = (announcement) => {
+  const title = '📅 Brotherhood Announcement';
+  const body = announcement.message;
+  
+  showLocalNotification(title, body, {
+    tag: 'announcement'
+  });
+};
+
+export const sendBrotherUpdateNotification = (update) => {
+  const title = '👥 Brother Update';
+  const body = `${update.brotherName}: ${update.message}`;
+  
+  showLocalNotification(title, body, {
+    tag: 'brother-update'
+  });
+};
+
+// Helper function to schedule notifications (for future use with service workers)
+export const scheduleNotification = async (notification, delay) => {
+  if ('serviceWorker' in navigator && 'PushManager' in window) {
+    try {
+      // This would require a service worker implementation
+      console.log('Scheduling notification:', notification, 'in', delay, 'ms');
+      
+      // For now, use setTimeout for simple scheduling
+      setTimeout(() => {
+        showLocalNotification(notification.title, notification.body, notification.options);
+      }, delay);
+    } catch (error) {
+      console.error('Error scheduling notification:', error);
+    }
+  }
 };

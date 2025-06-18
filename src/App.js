@@ -56,15 +56,10 @@ const AppContent = () => {
   };
 
   return (
-    <BrothersProvider>
-      <NotificationProvider>
-        <OfflineIndicator />
-        <Layout currentPage={currentPage} onPageChange={setCurrentPage}>
-          <NotificationBanner />
-          {renderPage()}
-        </Layout>
-      </NotificationProvider>
-    </BrothersProvider>
+    <Layout currentPage={currentPage} onPageChange={setCurrentPage}>
+      <NotificationBanner />
+      {renderPage()}
+    </Layout>
   );
 };
 
@@ -72,7 +67,12 @@ const App = () => {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <AppContent />
+        <BrothersProvider>
+          <NotificationProvider>
+            <OfflineIndicator />
+            <AppContent />
+          </NotificationProvider>
+        </BrothersProvider>
       </AuthProvider>
     </ErrorBoundary>
   );
