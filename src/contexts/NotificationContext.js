@@ -1,10 +1,21 @@
-// src/contexts/NotificationContext.js
+// ===== src/contexts/NotificationContext.js =====
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { 
+  collection, 
+  doc, 
+  onSnapshot, 
+  addDoc, 
+  updateDoc,
+  query,
+  orderBy,
+  where,
+  serverTimestamp
+} from 'firebase/firestore';
+import { db } from '../services/firebase';
+import { 
   requestNotificationPermission, 
   onMessageListener,
-  notificationTypes,
   sendDuaNotification,
   sendContactReminder,
   sendGoalReminder
@@ -23,15 +34,9 @@ export const useNotifications = () => {
 export const NotificationProvider = ({ children }) => {
   const { user } = useAuth();
   const [notificationToken, setNotificationToken] = useState(null);
-  const [notifications, setNotifications] = useState(() => {
-    // Load from localStorage or use empty array
-    try {
-      const saved = localStorage.getItem('brotherhood_notifications');
-      return saved ? JSON.parse(saved) : [];
-    } catch (error) {
-      return [];
-    }
-  });
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [settings, setSettings] = useState({
     weeklyReminders: true,
     duaRequests: true,
@@ -41,218 +46,218 @@ export const NotificationProvider = ({ children }) => {
     brotherUpdates: false
   });
 
+  // Load notifications from Firestore
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      setLoading(false);
+      return;
+    }
+
+    const q = query(
+      collection(db, 'users', user.uid, 'notifications'),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, 
+      (snapshot) => {
+        const notificationData = [];
+        snapshot.forEach((doc) => {
+          notificationData.push({ id: doc.id, ...doc.data() });
+        });
+        setNotifications(notificationData);
+        setLoading(false);
+        setError(null);
+      },
+      (err) => {
+        setError('Failed to load notifications');
+        setLoading(false);
+      }
+    );
+
+    return unsubscribe;
+  }, [user]);
+
+  // Load user settings
+  useEffect(() => {
+    if (!user) return;
+
+    const settingsRef = doc(db, 'users', user.uid, 'settings', 'notifications');
+    const unsubscribe = onSnapshot(settingsRef,
+      (doc) => {
+        if (doc.exists()) {
+          setSettings({ ...settings, ...doc.data() });
+        }
+      },
+      (err) => {
+        console.error('Error loading notification settings:', err);
+      }
+    );
+
+    return unsubscribe;
+  }, [user]);
+
+  // Initialize notifications
   useEffect(() => {
     if (user) {
       initializeNotifications();
     }
   }, [user]);
 
-  // Save notifications to localStorage whenever they change
+  // Listen for foreground messages
   useEffect(() => {
-    try {
-      localStorage.setItem('brotherhood_notifications', JSON.stringify(notifications));
-    } catch (error) {
-      console.error('Failed to save notifications:', error);
-    }
-  }, [notifications]);
-
-  useEffect(() => {
-    // Listen for foreground messages
     const unsubscribe = onMessageListener().then((payload) => {
       console.log('Received foreground message:', payload);
-      addNotification({
-        id: Date.now().toString(),
-        title: payload.notification.title,
-        body: payload.notification.body,
-        type: payload.data?.type || 'announcement',
-        data: payload.data,
-        timestamp: new Date(),
+      addNotificationToDb({
+        title: payload.notification?.title || 'New Notification',
+        body: payload.notification?.body || '',
+        data: payload.data || {},
+        type: payload.data?.type || 'general',
         read: false
       });
-    }).catch(console.error);
+    });
 
     return () => unsubscribe;
   }, []);
 
   const initializeNotifications = async () => {
-    const token = await requestNotificationPermission();
-    setNotificationToken(token);
-    
-    // Initialize contact tracking with sample data if none exists
-    const { initializeContactTracking } = require('../services/contactTracking');
-    
-    // Add sample data for testing
-    if (notifications.length === 0) {
-      initializeContactTracking({ createContactReminderNotification });
+    try {
+      const token = await requestNotificationPermission();
+      setNotificationToken(token);
       
-      // Add sample notifications
-      const sampleNotifications = [
-        {
-          id: '1',
-          title: '🤲 New Dua Request',
-          body: 'Brother Ahmad needs prayers for his upcoming surgery',
-          type: 'dua_request',
-          timestamp: new Date(Date.now() - 5 * 60 * 1000),
-          read: false,
-          data: { brotherId: 'ahmad123', duaId: 'dua456' }
-        }
-      ];
-      setNotifications(sampleNotifications);
+      // Save token to user profile for sending push notifications
+      if (token && user) {
+        await updateDoc(doc(db, 'users', user.uid), {
+          fcmToken: token,
+          updatedAt: serverTimestamp()
+        });
+      }
+    } catch (err) {
+      console.error('Failed to initialize notifications:', err);
     }
-    
-    // Load user notification settings from Firestore
-    // loadNotificationSettings();
   };
 
-  const addNotification = (notification) => {
-    setNotifications(prev => [notification, ...prev.slice(0, 49)]); // Keep last 50
+  const addNotificationToDb = async (notification) => {
+    if (!user) return;
+    
+    try {
+      await addDoc(collection(db, 'users', user.uid, 'notifications'), {
+        ...notification,
+        createdAt: serverTimestamp()
+      });
+    } catch (err) {
+      console.error('Failed to save notification:', err);
+    }
   };
 
-  const markAsRead = (notificationId) => {
-    setNotifications(prev => 
-      prev.map(n => 
-        n.id === notificationId ? { ...n, read: true } : n
-      )
-    );
-    
-    // Remove notification after 3 seconds
-    setTimeout(() => {
-      deleteNotification(notificationId);
-    }, 3000);
+  const markAsRead = async (notificationId) => {
+    if (!user) return;
+
+    try {
+      await updateDoc(doc(db, 'users', user.uid, 'notifications', notificationId), {
+        read: true,
+        readAt: serverTimestamp()
+      });
+    } catch (err) {
+      console.error('Failed to mark notification as read:', err);
+    }
   };
 
-  const markAllAsRead = () => {
-    const unreadIds = notifications.filter(n => !n.read).map(n => n.id);
+  const markAllAsRead = async () => {
+    if (!user) return;
+
+    const unreadNotifications = notifications.filter(n => !n.read);
     
-    setNotifications(prev => 
-      prev.map(n => ({ ...n, read: true }))
-    );
-    
-    // Remove all previously unread notifications after 3 seconds
-    setTimeout(() => {
-      setNotifications(prev => 
-        prev.filter(n => !unreadIds.includes(n.id))
+    try {
+      const promises = unreadNotifications.map(notification =>
+        updateDoc(doc(db, 'users', user.uid, 'notifications', notification.id), {
+          read: true,
+          readAt: serverTimestamp()
+        })
       );
-    }, 3000);
+      
+      await Promise.all(promises);
+    } catch (err) {
+      console.error('Failed to mark all notifications as read:', err);
+    }
   };
 
-  const deleteNotification = (notificationId) => {
-    setNotifications(prev => 
-      prev.filter(n => n.id !== notificationId)
-    );
+  const updateSettings = async (newSettings) => {
+    if (!user) return;
+
+    try {
+      await updateDoc(doc(db, 'users', user.uid, 'settings', 'notifications'), {
+        ...newSettings,
+        updatedAt: serverTimestamp()
+      });
+      setSettings(newSettings);
+    } catch (err) {
+      console.error('Failed to update notification settings:', err);
+    }
+  };
+
+  const triggerDuaNotification = async (duaRequest) => {
+    if (settings.duaRequests || (settings.urgentDuas && duaRequest.urgent)) {
+      sendDuaNotification(duaRequest);
+      
+      // Add to database for persistent storage
+      await addNotificationToDb({
+        title: duaRequest.urgent ? '🚨 Urgent Dua Request' : '🤲 New Dua Request',
+        body: duaRequest.anonymous 
+          ? 'A brother needs your prayers'
+          : `${duaRequest.authorName} needs your prayers`,
+        type: 'dua_request',
+        data: { duaId: duaRequest.id },
+        read: false
+      });
+    }
+  };
+
+  const triggerContactReminder = async (brothers) => {
+    if (settings.weeklyReminders) {
+      sendContactReminder(brothers);
+      
+      await addNotificationToDb({
+        title: '📞 Brotherhood Contact Reminder',
+        body: `You have ${brothers.length} brothers to connect with`,
+        type: 'contact_reminder',
+        data: { brotherCount: brothers.length },
+        read: false
+      });
+    }
+  };
+
+  const triggerGoalReminder = async (goal) => {
+    if (settings.goalReminders) {
+      sendGoalReminder(goal);
+      
+      await addNotificationToDb({
+        title: '🎯 Spiritual Goal Reminder',
+        body: `Time for your ${goal.title}`,
+        type: 'goal_reminder',
+        data: { goalId: goal.id },
+        read: false
+      });
+    }
   };
 
   const getUnreadCount = () => {
     return notifications.filter(n => !n.read).length;
   };
 
-  const clearAllNotifications = () => {
-    setNotifications([]);
-    try {
-      localStorage.removeItem('brotherhood_notifications');
-    } catch (error) {
-      console.error('Failed to clear notifications from storage:', error);
-    }
-  };
-
-  const updateNotificationSettings = (newSettings) => {
-    setSettings(prev => ({ ...prev, ...newSettings }));
-    // Save to Firestore in real implementation
-  };
-
-  // Helper functions to create notifications
-  const createDuaRequestNotification = (duaRequest) => {
-    if (!settings.duaRequests && !duaRequest.urgent) return;
-    
-    const notification = {
-      id: Date.now().toString(),
-      title: duaRequest.urgent ? '🚨 Urgent Dua Request' : '🤲 New Dua Request',
-      body: duaRequest.anonymous 
-        ? 'A brother needs your prayers'
-        : `${duaRequest.authorName} needs your prayers`,
-      type: duaRequest.urgent ? 'urgent_dua' : 'dua_request',
-      timestamp: new Date(),
-      read: false,
-      data: { 
-        duaId: duaRequest.id,
-        brotherId: duaRequest.authorId,
-        urgent: duaRequest.urgent
-      }
-    };
-    
-    addNotification(notification);
-    sendDuaNotification(duaRequest);
-  };
-
-  const createContactReminderNotification = (brothers) => {
-    if (!settings.weeklyReminders) return;
-    
-    const notification = {
-      id: Date.now().toString(),
-      title: '📞 Brotherhood Contact Reminder',
-      body: brothers.length === 1 
-        ? `Time to connect with ${brothers[0].name}`
-        : `You have ${brothers.length} brothers to contact this week`,
-      type: 'contact_reminder',
-      timestamp: new Date(),
-      read: false,
-      data: { brotherIds: brothers.map(b => b.id) }
-    };
-    
-    addNotification(notification);
-    sendContactReminder(brothers);
-  };
-
-  const createGoalReminderNotification = (goal) => {
-    if (!settings.goalReminders) return;
-    
-    const notification = {
-      id: Date.now().toString(),
-      title: '🎯 Spiritual Goal Reminder',
-      body: `Time for your ${goal.title}`,
-      type: 'goal_reminder',
-      timestamp: new Date(),
-      read: false,
-      data: { goalId: goal.id }
-    };
-    
-    addNotification(notification);
-    sendGoalReminder(goal);
-  };
-
-  const createAnnouncementNotification = (announcement) => {
-    if (!settings.announcements) return;
-    
-    const notification = {
-      id: Date.now().toString(),
-      title: '📢 Brotherhood Announcement',
-      body: announcement.title,
-      type: 'announcement',
-      timestamp: new Date(),
-      read: false,
-      data: { announcementId: announcement.id }
-    };
-    
-    addNotification(notification);
-  };
-
   const value = {
-    notifications,
-    settings,
     notificationToken,
-    // Core notification management
-    addNotification,
+    notifications,
+    loading,
+    error,
+    settings,
     markAsRead,
     markAllAsRead,
-    deleteNotification,
-    getUnreadCount,
-    clearAllNotifications,
-    updateNotificationSettings,
-    // Notification creators
-    createDuaRequestNotification,
-    createContactReminderNotification,
-    createGoalReminderNotification,
-    createAnnouncementNotification
+    updateSettings,
+    triggerDuaNotification,
+    triggerContactReminder,
+    triggerGoalReminder,
+    getUnreadCount
   };
 
   return (
