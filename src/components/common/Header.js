@@ -1,12 +1,12 @@
 // src/components/common/Header.js
 import React, { useState } from 'react';
-import { Bell, Search } from 'lucide-react';
+import { Bell, Search, Settings } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotifications } from '../../contexts/NotificationContext';
 import { useAuthActions } from '../../hooks/useAuth';
 import NotificationDropdown from './NotificationDropdown';
 
-const Header = () => {
+const Header = ({ onNavigate }) => {
   const { user } = useAuth();
   const { signOut } = useAuthActions();
   const { getUnreadCount } = useNotifications();
@@ -20,6 +20,12 @@ const Header = () => {
 
   const closeNotificationDropdown = () => {
     setIsNotificationDropdownOpen(false);
+  };
+
+  const handleSettingsClick = () => {
+    if (onNavigate) {
+      onNavigate('settings');
+    }
   };
 
   return (
@@ -56,6 +62,15 @@ const Header = () => {
               onClose={closeNotificationDropdown}
             />
           </div>
+
+          {/* Settings Icon */}
+          <button 
+            onClick={handleSettingsClick}
+            className="p-2 text-gray-600 hover:text-gray-800 transition-colors"
+            title="Settings"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
           
           <button
             onClick={signOut}

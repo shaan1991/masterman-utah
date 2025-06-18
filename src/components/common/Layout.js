@@ -1,4 +1,4 @@
-// ===== src/components/common/Layout.js =====
+// src/components/common/Layout.js
 import React from 'react';
 import Navigation from './Navigation';
 import Header from './Header';
@@ -6,7 +6,7 @@ import Header from './Header';
 const Layout = ({ children, currentPage, onPageChange }) => {
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      <Header onNavigate={onPageChange} />
       <div className="max-w-md mx-auto bg-white min-h-screen shadow-lg">
         <main className="p-4 pb-20">
           {children}
