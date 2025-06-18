@@ -1,10 +1,13 @@
+// src/components/dua/DuaForm.js
 import React, { useState } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNotifications } from '../../contexts/NotificationContext';
 import { addDuaRequest } from '../../services/firestore';
 
 const DuaForm = ({ onClose, onSubmit }) => {
   const { user } = useAuth();
+  const { createDuaRequestNotification } = useNotifications();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     request: '',
@@ -28,12 +31,19 @@ const DuaForm = ({ onClose, onSubmit }) => {
         responses: [],
         responseCount: 0,
         answered: false,
-        comments: 0
+        comments: 0,
+        createdAt: new Date()
       };
 
       const result = await addDuaRequest(duaData);
       
       if (!result.error) {
+        // Create notification for all brothers except the author
+        createDuaRequestNotification({
+          ...duaData,
+          id: result.id
+        });
+
         onSubmit && onSubmit(duaData);
         onClose();
       } else {

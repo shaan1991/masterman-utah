@@ -1,11 +1,11 @@
-// / ===== src/components/dashboard/Dashboard.js =====
+// ===== src/components/dashboard/Dashboard.js =====
 import React from 'react';
 import StatsCards from './StatsCards';
 import ContactSuggestions from './ContactSuggestions';
 import { useBrothers } from '../../contexts/BrothersContext';
 import { Heart } from 'lucide-react';
 
-const Dashboard = () => {
+const Dashboard = ({ onNavigate }) => {
   const { brothers, loading } = useBrothers();
 
   if (loading) {
@@ -14,7 +14,7 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="Black text-white p-4 rounded-lg">
+      <div className="bg-green-600 text-white p-4 rounded-lg">
         <h2 className="text-lg font-semibold">Assalamu Alaikum!</h2>
         <p className="text-sm opacity-90">
           May Allah bless your connections today
@@ -22,7 +22,7 @@ const Dashboard = () => {
       </div>
       
       <StatsCards brothers={brothers} />
-      <ContactSuggestions brothers={brothers} />
+      <ContactSuggestions brothers={brothers} onNavigate={onNavigate} />
       
       <div className="bg-white p-4 rounded-lg shadow-sm border">
         <div className="flex items-center space-x-2 mb-3">

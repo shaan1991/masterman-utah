@@ -37,7 +37,7 @@ const AppContent = () => {
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard onNavigate={setCurrentPage} />;
       case 'brothers':
         return <BrotherhoodDirectory />;
       case 'dua':
@@ -51,7 +51,7 @@ const AppContent = () => {
       case 'settings':
         return <Settings />;
       default:
-        return <Dashboard />;
+        return <Dashboard onNavigate={setCurrentPage} />;
     }
   };
 

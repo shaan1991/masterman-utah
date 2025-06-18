@@ -1,13 +1,41 @@
-// ===== src/components/goals/GoalCard.js =====
-import React, { useState } from 'react';
+// src/components/goals/GoalCard.js
+import React, { useState, useEffect } from 'react';
 import { CheckCircle, Star, Clock, Edit, Trash2 } from 'lucide-react';
+import { useNotifications } from '../../contexts/NotificationContext';
 import { formatDate } from '../../utils/dateHelpers';
 
 const GoalCard = ({ goal, onUpdate }) => {
+  const { createGoalReminderNotification } = useNotifications();
   const [showActions, setShowActions] = useState(false);
   
   const progressPercentage = Math.min((goal.progress / goal.target) * 100, 100);
   const isCompleted = goal.progress >= goal.target;
+  
+  // Check if goal needs reminder notification
+  useEffect(() => {
+    const checkGoalReminder = () => {
+      if (!goal.lastCompleted) return;
+      
+      const now = new Date();
+      const lastCompleted = new Date(goal.lastCompleted);
+      const hoursSinceLastActivity = (now - lastCompleted) / (1000 * 60 * 60);
+      
+      // Send reminder based on frequency
+      let reminderThreshold = 24; // Default to daily
+      if (goal.frequency === 'weekly') reminderThreshold = 168; // 7 days
+      if (goal.frequency === 'monthly') reminderThreshold = 720; // 30 days
+      
+      if (hoursSinceLastActivity > reminderThreshold && !isCompleted) {
+        createGoalReminderNotification(goal);
+      }
+    };
+    
+    // Check for reminders every hour when component mounts
+    checkGoalReminder();
+    const interval = setInterval(checkGoalReminder, 60 * 60 * 1000);
+    
+    return () => clearInterval(interval);
+  }, [goal, isCompleted, createGoalReminderNotification]);
   
   const getGoalIcon = (type) => {
     switch (type) {
@@ -22,12 +50,23 @@ const GoalCard = ({ goal, onUpdate }) => {
 
   const handleMarkComplete = () => {
     if (goal.progress < goal.target) {
-      onUpdate({
+      const updatedGoal = {
         ...goal,
         progress: goal.progress + 1,
         lastCompleted: new Date(),
         streak: goal.streak + 1
-      });
+      };
+      
+      onUpdate(updatedGoal);
+      
+      // If goal is now completed, create celebration notification
+      if (updatedGoal.progress >= updatedGoal.target) {
+        createGoalReminderNotification({
+          ...updatedGoal,
+          title: `🎉 Goal Completed: ${updatedGoal.title}`,
+          type: 'goal_completed'
+        });
+      }
     }
   };
 
@@ -83,56 +122,49 @@ const GoalCard = ({ goal, onUpdate }) => {
               isCompleted ? 'bg-green-500' : 'bg-blue-500'
             }`}
             style={{ width: `${progressPercentage}%` }}
-          ></div>
+          />
         </div>
       </div>
 
-      {/* Status and Actions */}
+      {/* Action Buttons */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2 text-sm text-gray-500">
-          <Clock className="w-3 h-3" />
-          <span>
-            {goal.lastCompleted 
-              ? `Last: ${formatDate(goal.lastCompleted)}`
-              : 'Not started'
-            }
-          </span>
+        <div className="flex items-center space-x-2">
+          {goal.lastCompleted && (
+            <div className="flex items-center space-x-1 text-xs text-gray-500">
+              <Clock className="w-3 h-3" />
+              <span>Last: {formatDate(goal.lastCompleted)}</span>
+            </div>
+          )}
         </div>
         
         <div className="flex space-x-2">
-          {isCompleted ? (
-            <div className="flex items-center space-x-1 text-green-600">
-              <CheckCircle className="w-4 h-4" />
-              <span className="text-sm font-medium">Completed!</span>
-            </div>
-          ) : (
+          {!isCompleted && (
             <button
               onClick={handleMarkComplete}
-              className="bg-green-100 text-green-700 px-3 py-1 rounded-md text-sm hover:bg-green-200 transition-colors"
+              className="bg-green-600 text-white px-3 py-1 rounded-md text-sm hover:bg-green-700 flex items-center space-x-1"
             >
-              Mark Complete
+              <CheckCircle className="w-4 h-4" />
+              <span>Complete</span>
             </button>
           )}
           
           {showActions && (
             <button
               onClick={handleReset}
-              className="bg-gray-100 text-gray-600 px-3 py-1 rounded-md text-sm hover:bg-gray-200 transition-colors"
+              className="bg-gray-100 text-gray-600 px-3 py-1 rounded-md text-sm hover:bg-gray-200 flex items-center space-x-1"
             >
-              Reset
+              <Trash2 className="w-4 h-4" />
+              <span>Reset</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Completion Message */}
       {isCompleted && (
-        <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-          <p className="text-sm text-green-800 font-medium">
-            Alhamdulillah! You've completed this week's goal.
-          </p>
-          <p className="text-xs text-green-700 mt-1">
-            May Allah accept your efforts and increase you in good deeds.
+        <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-md">
+          <p className="text-sm text-green-700 flex items-center space-x-1">
+            <CheckCircle className="w-4 h-4" />
+            <span>Alhamdulillah! Goal completed this period.</span>
           </p>
         </div>
       )}

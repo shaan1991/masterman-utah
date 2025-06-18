@@ -1,4 +1,4 @@
-// ===== src/services/notifications.js =====
+// src/services/notifications.js
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { messaging } from './firebase';
 
@@ -43,11 +43,13 @@ export const onMessageListener = () =>
 // Local notification helpers
 export const showLocalNotification = (title, body, options = {}) => {
   if ('Notification' in window && Notification.permission === 'granted') {
+    // Remove actions from options as they're not supported in local notifications
+    const { actions, ...cleanOptions } = options;
     new Notification(title, {
       body,
       icon: '/icon-192x192.png',
       badge: '/icon-96x96.png',
-      ...options
+      ...cleanOptions
     });
   }
 };
@@ -100,10 +102,6 @@ export const sendContactReminder = (brothers) => {
     : `You have ${count} brothers to contact this week`;
   
   showLocalNotification(title, body, {
-    tag: 'contact-reminder',
-    actions: [
-      { action: 'view', title: 'View Suggestions' },
-      { action: 'dismiss', title: 'Dismiss' }
-    ]
+    tag: 'contact-reminder'
   });
 };

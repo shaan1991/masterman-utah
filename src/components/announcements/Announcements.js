@@ -1,58 +1,61 @@
 // src/components/announcements/Announcements.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Filter, MessageSquare } from 'lucide-react';
+import { 
+  collection, 
+  query, 
+  orderBy, 
+  onSnapshot, 
+  addDoc, 
+  updateDoc, 
+  doc, 
+  serverTimestamp,
+  where
+} from 'firebase/firestore';
+import { useAuthState } from 'react-firebase-hooks/auth';
+import { auth, db } from '../../services/firebase';
 import AnnouncementCard from './AnnouncementCard';
 import AnnouncementForm from './AnnouncementForm';
 
 const Announcements = () => {
-  const [announcements, setAnnouncements] = useState([
-    {
-      id: '1',
-      author: 'Ahmed Hassan',
-      authorId: 'user1',
-      title: 'Family Update',
-      content: 'Alhamdulillah, my wife and I are expecting our first child! Please keep us in your duas.',
-      type: 'personal',
-      timestamp: new Date('2025-06-16T10:30:00'),
-      likes: 15,
-      comments: 8,
-      isLiked: false
-    },
-    {
-      id: '2',
-      author: 'Omar Abdullah',
-      authorId: 'user2',
-      title: 'Job Promotion',
-      content: 'SubhanAllah, I got the promotion I was interviewing for! Thank you all for your duas and support.',
-      type: 'achievement',
-      timestamp: new Date('2025-06-15T16:45:00'),
-      likes: 22,
-      comments: 12,
-      isLiked: true
-    },
-    {
-      id: '3',
-      author: 'Brotherhood Admin',
-      authorId: 'admin',
-      title: 'Monthly Gathering',
-      content: 'Assalamu alaikum brothers! Our next in-person gathering is scheduled for Saturday, June 28th at Masjid Al-Noor after Maghrib prayer. Looking forward to seeing everyone!',
-      type: 'event',
-      timestamp: new Date('2025-06-14T09:00:00'),
-      likes: 8,
-      comments: 5,
-      isLiked: false,
-      isPinned: true
-    }
-  ]);
-
+  const [user] = useAuthState(auth);
+  const [announcements, setAnnouncements] = useState([]);
   const [filter, setFilter] = useState('all');
   const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Real-time listener for announcements
+  useEffect(() => {
+    if (!user) return;
+
+    const q = query(
+      collection(db, 'announcements'),
+      orderBy('timestamp', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const announcementData = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        announcementData.push({
+          id: doc.id,
+          ...data,
+          timestamp: data.timestamp?.toDate() || new Date()
+        });
+      });
+      setAnnouncements(announcementData);
+      setLoading(false);
+    }, (error) => {
+      console.error('Error fetching announcements:', error);
+      setLoading(false);
+    });
+
+    return unsubscribe;
+  }, [user]);
 
   const filteredAnnouncements = announcements.filter(announcement => {
     if (filter === 'all') return true;
     return announcement.type === filter;
-  }).sort((a, b) => {
-    return new Date(b.timestamp) - new Date(a.timestamp);
   });
 
   const filterOptions = [
@@ -62,20 +65,71 @@ const Announcements = () => {
     { value: 'event', label: 'Events' }
   ];
 
-  const handleSaveAnnouncement = (announcementData) => {
-    const newAnnouncement = {
-      id: Date.now().toString(),
-      author: 'Current User', // Replace with actual user data
-      authorId: 'current-user-id',
-      timestamp: new Date(),
-      likes: 0,
-      comments: 0,
-      isLiked: false,
-      ...announcementData
-    };
-    setAnnouncements(prev => [newAnnouncement, ...prev]);
-    setShowForm(false);
+  const handleSaveAnnouncement = async (announcementData) => {
+    if (!user) return;
+
+    try {
+      await addDoc(collection(db, 'announcements'), {
+        ...announcementData,
+        author: user.displayName || user.email,
+        authorId: user.uid,
+        timestamp: serverTimestamp(),
+        likes: 0,
+        comments: 0,
+        likedBy: []
+      });
+      setShowForm(false);
+    } catch (error) {
+      console.error('Error saving announcement:', error);
+    }
   };
+
+  const handleLikeAnnouncement = async (announcementId, isCurrentlyLiked) => {
+    if (!user) return;
+
+    try {
+      const announcementRef = doc(db, 'announcements', announcementId);
+      const announcement = announcements.find(a => a.id === announcementId);
+      
+      if (!announcement) return;
+
+      const likedBy = announcement.likedBy || [];
+      let newLikedBy, newLikes;
+
+      if (isCurrentlyLiked) {
+        // Remove like
+        newLikedBy = likedBy.filter(uid => uid !== user.uid);
+        newLikes = Math.max(0, (announcement.likes || 0) - 1);
+      } else {
+        // Add like
+        newLikedBy = [...likedBy, user.uid];
+        newLikes = (announcement.likes || 0) + 1;
+      }
+
+      await updateDoc(announcementRef, {
+        likes: newLikes,
+        likedBy: newLikedBy
+      });
+    } catch (error) {
+      console.error('Error updating like:', error);
+    }
+  };
+
+  if (!user) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        <p>Please sign in to view announcements</p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        <p>Loading announcements...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -124,12 +178,15 @@ const Announcements = () => {
           filteredAnnouncements.map(announcement => (
             <AnnouncementCard
               key={announcement.id}
-              announcement={announcement}
-              onUpdate={(updatedAnnouncement) => {
-                setAnnouncements(announcements.map(a => 
-                  a.id === updatedAnnouncement.id ? updatedAnnouncement : a
-                ));
+              announcement={{
+                ...announcement,
+                isLiked: (announcement.likedBy || []).includes(user.uid)
               }}
+              onLike={() => handleLikeAnnouncement(
+                announcement.id, 
+                (announcement.likedBy || []).includes(user.uid)
+              )}
+              currentUserId={user.uid}
             />
           ))
         )}

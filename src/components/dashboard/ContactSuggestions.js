@@ -4,7 +4,7 @@ import { Phone, MessageSquare, Clock } from 'lucide-react';
 import { getContactPriority } from '../../utils/contactHelpers';
 import { getDaysAgo } from '../../utils/dateHelpers';
 
-const ContactSuggestions = ({ brothers = [] }) => {
+const ContactSuggestions = ({ brothers = [], onNavigate }) => {
   const suggestions = getContactPriority(brothers).slice(0, 3);
 
   const getStatusColor = (daysAgo) => {
@@ -70,7 +70,10 @@ const ContactSuggestions = ({ brothers = [] }) => {
       
       {suggestions.length > 0 && (
         <div className="p-3 border-t bg-gray-50">
-          <button className="w-full text-center text-sm text-black-600 hover:text-green-700 font-medium">
+          <button 
+            onClick={() => onNavigate('brothers')}
+            className="w-full text-center text-sm text-green-600 hover:text-green-700 font-medium"
+          >
             View All Brothers
           </button>
         </div>

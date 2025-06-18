@@ -28,10 +28,10 @@ const DuaRequests = () => {
     switch (filter) {
       case 'urgent':
         return dua.urgent;
-      case 'answered':
-        return dua.answered;
-      case 'unanswered':
-        return !dua.answered;
+    //   case 'answered':
+    //     return dua.answered;
+    //   case 'unanswered':
+    //     return !dua.answered;
       case 'mine':
         return dua.authorId === 'current-user-id'; // Replace with actual user ID
       default:
@@ -42,8 +42,7 @@ const DuaRequests = () => {
   const filterOptions = [
     { value: 'all', label: 'All', count: duaRequests.length },
     { value: 'urgent', label: 'Urgent', count: duaRequests.filter(d => d.urgent).length },
-    { value: 'unanswered', label: 'Unanswered', count: duaRequests.filter(d => !d.answered).length },
-    { value: 'answered', label: 'Answered', count: duaRequests.filter(d => d.answered).length }
+   
   ];
 
   if (loading) {

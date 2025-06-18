@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Heart, MessageCircle, Share, Calendar, Trophy, User } from 'lucide-react';
 import { formatDate } from '../../utils/dateHelpers';
 
-const AnnouncementCard = ({ announcement, onUpdate }) => {
+const AnnouncementCard = ({ announcement, onLike, currentUserId }) => {
   const [showComments, setShowComments] = useState(false);
 
   const getTypeIcon = (type) => {
@@ -22,15 +22,6 @@ const AnnouncementCard = ({ announcement, onUpdate }) => {
       case 'event': return 'text-purple-600 bg-purple-100';
       default: return 'text-gray-600 bg-gray-100';
     }
-  };
-
-  const handleLike = () => {
-    const updatedAnnouncement = {
-      ...announcement,
-      isLiked: !announcement.isLiked,
-      likes: announcement.isLiked ? announcement.likes - 1 : announcement.likes + 1
-    };
-    onUpdate(updatedAnnouncement);
   };
 
   const getInitials = (name) => {
@@ -73,7 +64,7 @@ const AnnouncementCard = ({ announcement, onUpdate }) => {
         <div className="flex items-center justify-between pt-3 border-t border-gray-100">
           <div className="flex items-center space-x-4">
             <button
-              onClick={handleLike}
+              onClick={onLike}
               className={`flex items-center space-x-1 text-sm transition-colors ${
                 announcement.isLiked 
                   ? 'text-red-600' 
@@ -81,7 +72,7 @@ const AnnouncementCard = ({ announcement, onUpdate }) => {
               }`}
             >
               <Heart className={`w-4 h-4 ${announcement.isLiked ? 'fill-current' : ''}`} />
-              <span>{announcement.likes}</span>
+              <span>{announcement.likes || 0}</span>
             </button>
             
             <button
@@ -89,7 +80,7 @@ const AnnouncementCard = ({ announcement, onUpdate }) => {
               className="flex items-center space-x-1 text-sm text-gray-500 hover:text-blue-600 transition-colors"
             >
               <MessageCircle className="w-4 h-4" />
-              <span>{announcement.comments}</span>
+              <span>{announcement.comments || 0}</span>
             </button>
             
             <button className="flex items-center space-x-1 text-sm text-gray-500 hover:text-green-600 transition-colors">
