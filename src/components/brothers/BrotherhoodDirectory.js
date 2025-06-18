@@ -6,6 +6,7 @@ import BrotherProfile from './BrotherProfile';
 import AddBrotherForm from './AddBrotherForm';
 import { useBrothers } from '../../contexts/BrothersContext';
 import { useBrothers as useBrothersHook } from '../../hooks/useBrothers';
+import PreloadContactsButton from './PreloadContactsButton';
 
 const BrotherhoodDirectory = () => {
   const { brothers, loading } = useBrothers();
@@ -49,6 +50,7 @@ const BrotherhoodDirectory = () => {
   if (loading) {
     return <div className="text-center py-8">Loading brothers...</div>;
   }
+
 
   return (
     <div className="space-y-4">
@@ -105,6 +107,9 @@ const BrotherhoodDirectory = () => {
           onUpdate={handleUpdateBrother}
         />
       )}
+
+
+
     </div>
   );
 };

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Phone, MessageSquare, Mail, Users, Save, X } from 'lucide-react';
 
-const LogInteraction = ({ brotherId, brotherName, onSave, onCancel }) => {
+const LogInteraction = ({ brotherId, brotherName, initialData, onSave, onCancel }) => {
   const [interaction, setInteraction] = useState({
     brotherId,
     method: 'call',
@@ -11,6 +11,16 @@ const LogInteraction = ({ brotherId, brotherName, onSave, onCancel }) => {
     notes: '',
     rating: 5
   });
+
+  // Pre-fill with initial data if provided (for editing or when triggered by call/text buttons)
+  useEffect(() => {
+    if (initialData) {
+      setInteraction(prev => ({
+        ...prev,
+        ...initialData
+      }));
+    }
+  }, [initialData]);
 
   const contactMethods = [
     { value: 'call', label: 'Phone Call', icon: Phone },
@@ -62,8 +72,8 @@ const LogInteraction = ({ brotherId, brotherName, onSave, onCancel }) => {
                     onClick={() => handleChange('method', method.value)}
                     className={`flex items-center space-x-2 p-3 rounded-lg border text-sm transition-colors ${
                       isSelected
-                        ? 'bg-green-50 border-green-300 text-green-700'
-                        : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                        ? 'border-green-500 bg-green-50 text-green-700'
+                        : 'border-gray-300 hover:border-gray-400 text-gray-600'
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -77,27 +87,33 @@ const LogInteraction = ({ brotherId, brotherName, onSave, onCancel }) => {
           {/* Date and Time */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Date
+              </label>
               <input
                 type="date"
                 value={interaction.date}
                 onChange={(e) => handleChange('date', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Time
+              </label>
               <input
                 type="time"
                 value={interaction.time}
                 onChange={(e) => handleChange('time', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                required
               />
             </div>
           </div>
 
-          {/* Duration */}
-          {(interaction.method === 'call' || interaction.method === 'in_person') && (
+          {/* Duration (for calls) */}
+          {interaction.method === 'call' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Duration (minutes)
@@ -106,38 +122,12 @@ const LogInteraction = ({ brotherId, brotherName, onSave, onCancel }) => {
                 type="number"
                 value={interaction.duration}
                 onChange={(e) => handleChange('duration', e.target.value)}
-                placeholder="e.g. 15"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+                placeholder="e.g., 15"
                 min="1"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
               />
             </div>
           )}
-
-          {/* Rating */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              How was the interaction?
-            </label>
-            <div className="flex space-x-2">
-              {[1, 2, 3, 4, 5].map((rating) => (
-                <button
-                  key={rating}
-                  type="button"
-                  onClick={() => handleChange('rating', rating)}
-                  className={`w-8 h-8 rounded-full text-sm font-medium transition-colors ${
-                    interaction.rating >= rating
-                      ? 'bg-yellow-400 text-white'
-                      : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-                  }`}
-                >
-                  ⭐
-                </button>
-              ))}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              1 = Brief/Difficult, 5 = Great conversation
-            </p>
-          </div>
 
           {/* Notes */}
           <div>
@@ -147,27 +137,51 @@ const LogInteraction = ({ brotherId, brotherName, onSave, onCancel }) => {
             <textarea
               value={interaction.notes}
               onChange={(e) => handleChange('notes', e.target.value)}
-              placeholder="What did you discuss? Any important updates?"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm resize-none"
+              placeholder="How did the conversation go? Any important topics discussed..."
               rows="3"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
             />
+          </div>
+
+          {/* Rating */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Connection Quality
+            </label>
+            <div className="flex space-x-1">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => handleChange('rating', star)}
+                  className={`text-2xl transition-colors ${
+                    star <= interaction.rating
+                      ? 'text-yellow-400 hover:text-yellow-500'
+                      : 'text-gray-300 hover:text-gray-400'
+                  }`}
+                >
+                  ⭐
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Rate the quality of your connection</p>
           </div>
 
           {/* Action Buttons */}
           <div className="flex space-x-3 pt-4">
             <button
+              type="button"
+              onClick={onCancel}
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
               type="submit"
-              className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 flex items-center justify-center space-x-2"
+              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center justify-center space-x-2"
             >
               <Save className="w-4 h-4" />
               <span>Save Interaction</span>
-            </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300"
-            >
-              Cancel
             </button>
           </div>
         </form>

@@ -12,7 +12,7 @@ const Header = () => {
     <header className="bg-white shadow-sm border-b">
       <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-semibold text-gray-800">Brotherhood</h1>
+          <h1 className="text-lg font-semibold text-gray-800">Masterman - Utah</h1>
           <p className="text-xs text-gray-600">
             Assalamu Alaikum, {user?.displayName?.split(' ')[0] || 'Brother'}
           </p>
