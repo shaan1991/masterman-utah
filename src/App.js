@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+// src/App.js
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { BrothersProvider } from './contexts/BrothersContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import Layout from './components/common/Layout';
 import AuthScreen from './components/auth/AuthScreen';
+import OnboardingScreen from './components/onboarding/OnboardingScreen';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import NotificationBanner from './components/common/NotificationBanner';
@@ -25,6 +27,21 @@ import './styles/components.css';
 const AppContent = () => {
   const { user, loading } = useAuth();
   const [currentPage, setCurrentPage] = useState('dashboard');
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Check if user needs onboarding
+  useEffect(() => {
+    if (user) {
+      const onboardingData = localStorage.getItem('brotherhood_onboarding_completed');
+      if (!onboardingData) {
+        setShowOnboarding(true);
+      }
+    }
+  }, [user]);
+
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
+  };
 
   if (loading) {
     return <LoadingSpinner />;
@@ -32,6 +49,10 @@ const AppContent = () => {
 
   if (!user) {
     return <AuthScreen />;
+  }
+
+  if (showOnboarding) {
+    return <OnboardingScreen onComplete={handleOnboardingComplete} />;
   }
 
   const renderPage = () => {

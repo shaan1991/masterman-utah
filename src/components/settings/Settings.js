@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Bell, Shield, LogOut, Cog } from 'lucide-react';
+import { User, Bell, Shield, LogOut, Cog, Share2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 const Settings = () => {
@@ -22,6 +22,26 @@ const Settings = () => {
       ...prev,
       [key]: !prev[key]
     }));
+  };
+
+  const handleInvite = async () => {
+    const shareData = {
+      title: 'Join our Brotherhood App',
+      text: 'Connect with your brothers in faith through our Brotherhood app. Stay in touch, share dua requests, and strengthen our bonds.',
+      url: window.location.origin
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback for browsers that don't support Web Share API
+        navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
+        alert('Invite link copied to clipboard!');
+      }
+    } catch (error) {
+      console.log('Error sharing:', error);
+    }
   };
 
   const handleSignOut = () => {
@@ -141,6 +161,17 @@ const Settings = () => {
             <p className="text-xs text-gray-600 mt-1">Phone and email are shared with verified brothers only</p>
           </div>
         </div>
+      </div>
+
+      {/* Invite Section */}
+      <div className="bg-white rounded-lg shadow-sm border">
+        <button
+          onClick={handleInvite}
+          className="w-full p-4 flex items-center justify-center gap-3 text-blue-600 hover:bg-blue-50 transition-colors rounded-lg"
+        >
+          <Share2 className="w-5 h-5" />
+          <span className="font-medium">Invite Brothers</span>
+        </button>
       </div>
 
       {/* Sign Out */}
