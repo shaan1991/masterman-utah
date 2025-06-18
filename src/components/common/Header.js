@@ -72,12 +72,7 @@ const Header = ({ onNavigate }) => {
             <Settings className="w-5 h-5" />
           </button>
           
-          <button
-            onClick={signOut}
-            className="text-xs text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            Sign Out
-          </button>
+          
         </div>
       </div>
     </header>

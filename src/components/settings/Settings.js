@@ -160,6 +160,14 @@ const Settings = () => {
             <p className="text-sm font-medium text-gray-800">Contact Information</p>
             <p className="text-xs text-gray-600 mt-1">Phone and email are shared with verified brothers only</p>
           </div>
+
+          <button
+            onClick={handleSignOut}
+            className="w-full p-3 flex items-center justify-center gap-2 text-red-600 hover:bg-red-50 border border-red-200 rounded-lg transition-colors mt-4"
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="text-sm font-medium">Sign Out</span>
+          </button>
         </div>
       </div>
 
@@ -171,17 +179,6 @@ const Settings = () => {
         >
           <Share2 className="w-5 h-5" />
           <span className="font-medium">Invite Brothers</span>
-        </button>
-      </div>
-
-      {/* Sign Out */}
-      <div className="bg-white rounded-lg shadow-sm border">
-        <button
-          onClick={handleSignOut}
-          className="w-full p-4 flex items-center justify-center gap-3 text-red-600 hover:bg-red-50 transition-colors rounded-lg"
-        >
-          <LogOut className="w-5 h-5" />
-          <span className="font-medium">Sign Out</span>
         </button>
       </div>
 
