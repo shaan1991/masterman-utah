@@ -1,9 +1,11 @@
+// src/components/settings/Settings.js - FIXED WITH WORKING LOGOUT
 import React, { useState } from 'react';
 import { User, Bell, Shield, LogOut, Cog, Share2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 const Settings = () => {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth(); // FIXED: Now getting signOut from context
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [notifications, setNotifications] = useState({
     duaRequests: true,
     weeklyReminders: true,
@@ -14,8 +16,6 @@ const Settings = () => {
     name: user?.displayName || 'User',
     email: user?.email || 'No email'
   });
-
-  const [isEditing, setIsEditing] = useState(false);
 
   const handleNotificationToggle = (key) => {
     setNotifications(prev => ({
@@ -44,10 +44,34 @@ const Settings = () => {
     }
   };
 
-  const handleSignOut = () => {
-    if (window.confirm('Are you sure you want to sign out?')) {
-      // Handle sign out logic
-      console.log('Signing out...');
+  // BULLETPROOF LOGOUT HANDLER
+  const handleSignOut = async () => {
+    if (!window.confirm('Are you sure you want to sign out?')) {
+      return;
+    }
+
+    console.log('Settings: User confirmed logout');
+    setIsSigningOut(true);
+
+    try {
+      console.log('Settings: Calling signOut function');
+      const result = await signOut();
+      
+      if (result && result.error) {
+        console.error('Settings: Logout error:', result.error);
+        alert(`Logout failed: ${result.error}`);
+      } else {
+        console.log('Settings: Logout successful');
+        // Page will reload automatically from AuthContext
+      }
+    } catch (error) {
+      console.error('Settings: Unexpected logout error:', error);
+      alert(`Unexpected error during logout: ${error.message}`);
+      
+      // Force reload as fallback
+      window.location.reload();
+    } finally {
+      setIsSigningOut(false);
     }
   };
 
@@ -92,54 +116,33 @@ const Settings = () => {
           <h2 className="text-lg font-semibold text-gray-800">Notifications</h2>
         </div>
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-gray-800">Dua Requests</p>
-              <p className="text-sm text-gray-600">Get notified of new prayer requests</p>
+        <div className="space-y-3">
+          {Object.entries(notifications).map(([key, value]) => (
+            <div key={key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div>
+                <p className="text-sm font-medium text-gray-800 capitalize">
+                  {key.replace(/([A-Z])/g, ' $1').trim()}
+                </p>
+                <p className="text-xs text-gray-600">
+                  {key === 'duaRequests' && 'Get notified of new dua requests'}
+                  {key === 'weeklyReminders' && 'Weekly brotherhood check-ins'}
+                  {key === 'announcements' && 'New announcement notifications'}
+                </p>
+              </div>
+              <button
+                onClick={() => handleNotificationToggle(key)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 ${
+                  value ? 'bg-green-600' : 'bg-gray-200'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    value ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={notifications.duaRequests}
-                onChange={() => handleNotificationToggle('duaRequests')}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-gray-800">Weekly Reminders</p>
-              <p className="text-sm text-gray-600">Reminders to contact brothers</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={notifications.weeklyReminders}
-                onChange={() => handleNotificationToggle('weeklyReminders')}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-gray-800">Announcements</p>
-              <p className="text-sm text-gray-600">Brotherhood updates and news</p>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                checked={notifications.announcements}
-                onChange={() => handleNotificationToggle('announcements')}
-                className="sr-only peer"
-              />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
+          ))}
         </div>
       </div>
 
@@ -161,12 +164,18 @@ const Settings = () => {
             <p className="text-xs text-gray-600 mt-1">Phone and email are shared with verified brothers only</p>
           </div>
 
+          {/* FIXED LOGOUT BUTTON */}
           <button
             onClick={handleSignOut}
-            className="w-full p-3 flex items-center justify-center gap-2 text-red-600 hover:bg-red-50 border border-red-200 rounded-lg transition-colors mt-4"
+            disabled={isSigningOut}
+            className={`w-full p-3 flex items-center justify-center gap-2 text-red-600 hover:bg-red-50 border border-red-200 rounded-lg transition-colors mt-4 ${
+              isSigningOut ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
           >
             <LogOut className="w-4 h-4" />
-            <span className="text-sm font-medium">Sign Out</span>
+            <span className="text-sm font-medium">
+              {isSigningOut ? 'Signing Out...' : 'Sign Out'}
+            </span>
           </button>
         </div>
       </div>
@@ -185,6 +194,7 @@ const Settings = () => {
       {/* App Info */}
       <div className="text-center text-sm text-gray-500">
         <p>Brotherhood App v1.0.0</p>
+        <p className="text-xs mt-1">May Allah bless our brotherhood</p>
       </div>
     </div>
   );

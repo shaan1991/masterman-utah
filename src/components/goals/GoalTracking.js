@@ -1,9 +1,9 @@
-// src/components/goals/GoalTracking.js
+// src/components/goals/GoalTracking.js - ENHANCED WITH DEBUG
 import React, { useState, useEffect } from 'react';
 import { Plus, Target, Calendar, TrendingUp } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSubcollection } from '../../hooks/useFirestore';
-import { addDoc, collection, updateDoc, doc, deleteDoc, getDoc } from 'firebase/firestore';
+import { addDoc, collection, updateDoc, doc, deleteDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../services/firebase';
 import GoalCard from './GoalCard';
 import AddGoalForm from './AddGoalForm';
@@ -14,7 +14,13 @@ const GoalTracking = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [error, setError] = useState(null);
 
-  // Use real Firestore data
+  // Enhanced debugging
+  useEffect(() => {
+    console.log('GoalTracking: Component mounted');
+    console.log('GoalTracking: User:', user ? { uid: user.uid, email: user.email } : 'No user');
+  }, [user]);
+
+  // Use real Firestore data with enhanced error handling
   const { documents: goals, loading, error: firestoreError } = useSubcollection(
     user ? `users/${user.uid}` : null,
     'goals',
@@ -23,40 +29,82 @@ const GoalTracking = () => {
 
   useEffect(() => {
     if (firestoreError) {
-      setError(firestoreError);
+      console.error('GoalTracking: Firestore error:', firestoreError);
+      setError(`Firestore error: ${firestoreError}`);
     }
   }, [firestoreError]);
 
   const handleAddGoal = async (goalData) => {
+    console.log('GoalTracking: handleAddGoal called with:', goalData);
+    
     if (!user) {
-      setError('User not authenticated');
+      const errorMsg = 'User not authenticated';
+      console.error('GoalTracking:', errorMsg);
+      setError(errorMsg);
       return;
     }
     
     try {
       setError(null); // Clear any previous errors
-      await addDoc(collection(db, 'users', user.uid, 'goals'), {
+      
+      // Enhanced goal data with better validation
+      const enhancedGoalData = {
         ...goalData,
+        userId: user.uid, // Add user ID for security
         progress: 0,
         streak: 0,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        // Ensure all required fields are present
+        title: goalData.title?.trim() || 'Untitled Goal',
+        description: goalData.description?.trim() || '',
+        type: goalData.type || 'other',
+        target: parseInt(goalData.target) || 1,
+        frequency: goalData.frequency || 'daily'
+      };
+      
+      console.log('GoalTracking: Adding goal to path:', `users/${user.uid}/goals`);
+      console.log('GoalTracking: Enhanced goal data:', enhancedGoalData);
+      
+      const docRef = await addDoc(collection(db, 'users', user.uid, 'goals'), enhancedGoalData);
+      
+      console.log('GoalTracking: Goal added successfully with ID:', docRef.id);
       setShowAddForm(false);
+      
     } catch (err) {
-      console.error('Error adding goal:', err);
-      setError('Failed to create goal: ' + err.message);
+      console.error('GoalTracking: Error adding goal:', err);
+      console.error('GoalTracking: Error code:', err.code);
+      console.error('GoalTracking: Error message:', err.message);
+      
+      let userFriendlyError = 'Failed to create goal';
+      
+      if (err.code === 'permission-denied') {
+        userFriendlyError = 'Permission denied. Please try signing out and back in.';
+      } else if (err.code === 'unauthenticated') {
+        userFriendlyError = 'Authentication expired. Please sign in again.';
+      } else if (err.message) {
+        userFriendlyError = `Error: ${err.message}`;
+      }
+      
+      setError(userFriendlyError);
+      alert(userFriendlyError); // Show immediate feedback
     }
   };
 
   const handleUpdateGoal = async (goalId, updateData) => {
+    console.log('GoalTracking: handleUpdateGoal called:', { goalId, updateData });
+    
     if (!user) {
-      setError('User not authenticated');
+      const errorMsg = 'User not authenticated';
+      console.error('GoalTracking:', errorMsg);
+      setError(errorMsg);
       return;
     }
     
     if (!goalId) {
-      setError('Goal ID is required for update');
+      const errorMsg = 'Goal ID is required for update';
+      console.error('GoalTracking:', errorMsg);
+      setError(errorMsg);
       return;
     }
 
@@ -65,33 +113,46 @@ const GoalTracking = () => {
       
       // First, verify the document exists
       const goalRef = doc(db, 'users', user.uid, 'goals', goalId);
+      console.log('GoalTracking: Checking if goal exists:', goalRef.path);
+      
       const goalDoc = await getDoc(goalRef);
       
       if (!goalDoc.exists()) {
         throw new Error(`Goal document with ID ${goalId} does not exist`);
       }
       
-      // Proceed with update
-      await updateDoc(goalRef, {
+      // Enhanced update data
+      const enhancedUpdateData = {
         ...updateData,
-        updatedAt: new Date()
-      });
+        updatedAt: serverTimestamp()
+      };
       
-      console.log(`Successfully updated goal ${goalId}`);
+      console.log('GoalTracking: Updating goal with data:', enhancedUpdateData);
+      
+      // Proceed with update
+      await updateDoc(goalRef, enhancedUpdateData);
+      
+      console.log('GoalTracking: Successfully updated goal', goalId);
     } catch (err) {
-      console.error('Error updating goal:', err);
-      setError('Failed to update goal: ' + err.message);
+      console.error('GoalTracking: Error updating goal:', err);
+      setError(`Failed to update goal: ${err.message}`);
     }
   };
 
   const handleDeleteGoal = async (goalId) => {
+    console.log('GoalTracking: handleDeleteGoal called:', goalId);
+    
     if (!user) {
-      setError('User not authenticated');
+      const errorMsg = 'User not authenticated';
+      console.error('GoalTracking:', errorMsg);
+      setError(errorMsg);
       return;
     }
     
     if (!goalId) {
-      setError('Goal ID is required for deletion');
+      const errorMsg = 'Goal ID is required for deletion';
+      console.error('GoalTracking:', errorMsg);
+      setError(errorMsg);
       return;
     }
 
@@ -100,17 +161,20 @@ const GoalTracking = () => {
       
       // First, verify the document exists
       const goalRef = doc(db, 'users', user.uid, 'goals', goalId);
+      console.log('GoalTracking: Checking if goal exists before deletion:', goalRef.path);
+      
       const goalDoc = await getDoc(goalRef);
       
       if (!goalDoc.exists()) {
         throw new Error(`Goal document with ID ${goalId} does not exist`);
       }
       
+      console.log('GoalTracking: Deleting goal:', goalId);
       await deleteDoc(goalRef);
-      console.log(`Successfully deleted goal ${goalId}`);
+      console.log('GoalTracking: Successfully deleted goal', goalId);
     } catch (err) {
-      console.error('Error deleting goal:', err);
-      setError('Failed to delete goal: ' + err.message);
+      console.error('GoalTracking: Error deleting goal:', err);
+      setError(`Failed to delete goal: ${err.message}`);
     }
   };
 
@@ -132,6 +196,7 @@ const GoalTracking = () => {
 
   const weeklyStats = calculateWeeklyStats();
 
+  // Enhanced loading state
   if (loading) {
     return (
       <div className="space-y-6 p-4">
@@ -143,52 +208,68 @@ const GoalTracking = () => {
             ))}
           </div>
         </div>
+        <div className="text-center text-sm text-gray-500">Loading goals...</div>
+      </div>
+    );
+  }
+
+  // Enhanced error display
+  if (error) {
+    return (
+      <div className="space-y-6 p-4">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
+          <strong className="font-bold">Error: </strong>
+          <span className="block sm:inline">{error}</span>
+          <button
+            onClick={() => setError(null)}
+            className="absolute top-0 bottom-0 right-0 px-4 py-3"
+          >
+            <span className="sr-only">Dismiss</span>
+            ×
+          </button>
+        </div>
+        <div className="text-center">
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Reload Page
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6 p-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-800">Spiritual Goals</h2>
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center space-x-2"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Add Goal</span>
-        </button>
-      </div>
+     
 
-      {/* Error Display */}
+      {/* Error Banner */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-red-800">{error}</p>
-            </div>
-            <div className="ml-auto pl-3">
-              <button
-                onClick={() => setError(null)}
-                className="inline-flex text-red-400 hover:text-red-600"
-              >
-                <span className="sr-only">Dismiss</span>
-                <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                </svg>
-              </button>
-            </div>
-          </div>
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
+          <span className="block sm:inline">{error}</span>
+          <button
+            onClick={() => setError(null)}
+            className="absolute top-0 bottom-0 right-0 px-4 py-3"
+          >
+            ×
+          </button>
         </div>
       )}
 
-      {/* Weekly Overview */}
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-800">Goal Tracking</h2>
+        <button
+          onClick={() => setShowAddForm(true)}
+          className="bg-green-600 text-white p-2 rounded-full hover:bg-green-700 transition-colors"
+          title="Add new goal"
+        >
+          <Plus className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Weekly Progress Card */}
       <div className="bg-gradient-to-r from-green-600 to-blue-600 rounded-lg p-6 text-white">
         <h3 className="text-lg font-semibold mb-4">This Week's Progress</h3>
         <div className="grid grid-cols-2 gap-4">
