@@ -68,11 +68,13 @@ const EditBrotherForm = ({ brother, onSave, onClose, loading = false }) => {
       return;
     }
 
+    console.log('EditBrotherForm: Submitting form with data:', formData);
+
     // Only include changed fields
     const updates = {};
     Object.keys(formData).forEach(key => {
       if (key === 'preferences') {
-        if (formData.preferences.preferredContact !== brother.preferences?.preferredContact) {
+        if (JSON.stringify(formData.preferences) !== JSON.stringify(brother.preferences || {})) {
           updates.preferences = formData.preferences;
         }
       } else if (formData[key] !== (brother[key] || '')) {
@@ -80,12 +82,20 @@ const EditBrotherForm = ({ brother, onSave, onClose, loading = false }) => {
       }
     });
 
+    console.log('EditBrotherForm: Changes detected:', updates);
+
     if (Object.keys(updates).length === 0) {
+      console.log('EditBrotherForm: No changes detected, closing form');
       onClose(); // No changes made
       return;
     }
 
-    await onSave(updates);
+    try {
+      await onSave(updates);
+      console.log('EditBrotherForm: Save completed successfully');
+    } catch (error) {
+      console.error('EditBrotherForm: Save failed:', error);
+    }
   };
 
   return (
@@ -97,6 +107,7 @@ const EditBrotherForm = ({ brother, onSave, onClose, loading = false }) => {
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
+            disabled={loading}
           >
             <X className="w-5 h-5" />
           </button>
@@ -115,7 +126,8 @@ const EditBrotherForm = ({ brother, onSave, onClose, loading = false }) => {
               value={formData.name}
               onChange={(e) => handleChange('name', e.target.value)}
               placeholder="Brother's name"
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 ${
+              disabled={loading}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:bg-gray-100 ${
                 errors.name ? 'border-red-300' : 'border-gray-300'
               }`}
             />
@@ -135,7 +147,8 @@ const EditBrotherForm = ({ brother, onSave, onClose, loading = false }) => {
               value={formData.email}
               onChange={(e) => handleChange('email', e.target.value)}
               placeholder="email@example.com"
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 ${
+              disabled={loading}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:bg-gray-100 ${
                 errors.email ? 'border-red-300' : 'border-gray-300'
               }`}
             />
@@ -155,7 +168,8 @@ const EditBrotherForm = ({ brother, onSave, onClose, loading = false }) => {
               value={formData.phone}
               onChange={(e) => handleChange('phone', e.target.value)}
               placeholder="+1 (555) 123-4567"
-              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 ${
+              disabled={loading}
+              className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:bg-gray-100 ${
                 errors.phone ? 'border-red-300' : 'border-gray-300'
               }`}
             />
@@ -175,7 +189,8 @@ const EditBrotherForm = ({ brother, onSave, onClose, loading = false }) => {
               value={formData.location}
               onChange={(e) => handleChange('location', e.target.value)}
               placeholder="City, State/Province"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+              disabled={loading}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:bg-gray-100"
             />
           </div>
 
@@ -187,7 +202,8 @@ const EditBrotherForm = ({ brother, onSave, onClose, loading = false }) => {
             <select
               value={formData.preferences.preferredContact}
               onChange={(e) => handleChange('preferences.preferredContact', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+              disabled={loading}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:bg-gray-100"
             >
               <option value="phone">Phone Call</option>
               <option value="text">Text Message</option>
@@ -202,7 +218,8 @@ const EditBrotherForm = ({ brother, onSave, onClose, loading = false }) => {
               value={formData.notes}
               onChange={(e) => handleChange('notes', e.target.value)}
               placeholder="Personal notes, family info, interests..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+              disabled={loading}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 resize-none disabled:opacity-50 disabled:bg-gray-100"
               rows="3"
             />
           </div>

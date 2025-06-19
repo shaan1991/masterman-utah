@@ -1,4 +1,4 @@
-// src/components/brothers/BrotherProfile.js
+// src/components/brothers/BrotherProfile.js - Fixed version with real updates
 import React, { useState, useEffect } from 'react';
 import { 
   Phone, 
@@ -9,15 +9,16 @@ import {
   Plus, 
   User,
   Edit,
+  Trash2,
   X 
 } from 'lucide-react';
 import { getDaysAgo } from '../../utils/dateHelpers';
-import { getInteractions, deleteInteraction } from '../../services/firestore';
+import { getInteractions, deleteInteraction, logInteraction, subscribeToInteractions } from '../../services/firestore';
 import { useAuth } from '../../contexts/AuthContext';
 import LogInteraction from '../interactions/LogInteraction';
 import EditBrotherForm from './EditBrotherForm';
 
-const BrotherProfile = ({ brother, onClose, onBrotherUpdate }) => {
+const BrotherProfile = ({ brother, onClose, onBrotherUpdate, onBrotherDelete }) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('info');
   const [interactions, setInteractions] = useState([]);
@@ -26,31 +27,87 @@ const BrotherProfile = ({ brother, onClose, onBrotherUpdate }) => {
   const [editingInteraction, setEditingInteraction] = useState(null);
   const [showEditForm, setShowEditForm] = useState(false);
   const [updateLoading, setUpdateLoading] = useState(false);
+  const [currentBrother, setCurrentBrother] = useState(brother);
 
+  // Update current brother when prop changes
+  useEffect(() => {
+    console.log('BrotherProfile: Brother prop updated:', brother);
+    setCurrentBrother(brother);
+  }, [brother]);
+
+  // Load interactions when tab changes or brother changes
   useEffect(() => {
     if (activeTab === 'history') {
       loadInteractions();
+      setupInteractionsSubscription();
     }
-  }, [activeTab, brother.id]);
+  }, [activeTab, currentBrother.id]);
 
   const loadInteractions = async () => {
     setLoading(true);
-    const result = await getInteractions(user.uid, brother.id);
-    if (!result.error) {
-      setInteractions(result.data);
+    try {
+      const result = await getInteractions(user.uid, currentBrother.id);
+      if (!result.error) {
+        console.log('BrotherProfile: Loaded interactions:', result.data);
+        setInteractions(result.data);
+      } else {
+        console.error('BrotherProfile: Error loading interactions:', result.error);
+      }
+    } catch (error) {
+      console.error('BrotherProfile: Exception loading interactions:', error);
     }
     setLoading(false);
   };
 
-  const handleInteractionSaved = () => {
-    setShowLogInteraction(false);
-    setEditingInteraction(null);
-    if (activeTab === 'history') {
-      loadInteractions();
+  const setupInteractionsSubscription = () => {
+    console.log('BrotherProfile: Setting up interactions subscription');
+    
+    try {
+      const unsubscribe = subscribeToInteractions(user.uid, currentBrother.id, (snapshot) => {
+        const interactionsData = [];
+        snapshot.forEach((doc) => {
+          interactionsData.push({ id: doc.id, ...doc.data() });
+        });
+        console.log('BrotherProfile: Real-time interactions update:', interactionsData.length);
+        setInteractions(interactionsData);
+      });
+
+      return unsubscribe;
+    } catch (error) {
+      console.error('BrotherProfile: Error setting up interactions subscription:', error);
     }
-    // Notify parent to refresh brother data
-    if (onBrotherUpdate) {
-      onBrotherUpdate();
+  };
+
+  const handleInteractionSaved = async (interactionData) => {
+    console.log('BrotherProfile: Saving interaction:', interactionData);
+    
+    try {
+      // Save the interaction
+      const result = await logInteraction(user.uid, interactionData);
+      if (result.error) {
+        console.error('BrotherProfile: Error saving interaction:', result.error);
+        alert('Error saving interaction: ' + result.error);
+        return;
+      }
+      
+      console.log('BrotherProfile: Interaction saved successfully');
+      
+      // Close the form
+      setShowLogInteraction(false);
+      setEditingInteraction(null);
+      
+      // Reload interactions
+      if (activeTab === 'history') {
+        setTimeout(loadInteractions, 500);
+      }
+      
+      // Notify parent to refresh brother data
+      if (onBrotherUpdate) {
+        onBrotherUpdate();
+      }
+    } catch (error) {
+      console.error('BrotherProfile: Exception saving interaction:', error);
+      alert('Error saving interaction: ' + error.message);
     }
   };
 
@@ -62,6 +119,7 @@ const BrotherProfile = ({ brother, onClose, onBrotherUpdate }) => {
     try {
       const result = await deleteInteraction(user.uid, interactionId);
       if (!result.error) {
+        console.log('BrotherProfile: Interaction deleted successfully');
         await loadInteractions();
       } else {
         alert('Error deleting interaction: ' + result.error);
@@ -74,26 +132,52 @@ const BrotherProfile = ({ brother, onClose, onBrotherUpdate }) => {
   const handleBrotherSave = async (updates) => {
     setUpdateLoading(true);
     try {
-      // Call the parent component's update function
+      console.log('BrotherProfile: Saving brother updates:', updates);
+      
       if (onBrotherUpdate) {
-        await onBrotherUpdate(brother.id, updates);
+        await onBrotherUpdate(currentBrother.id, updates);
+        console.log('BrotherProfile: Brother update completed');
+        
+        // Immediately update local state for instant feedback
+        setCurrentBrother(prev => ({ ...prev, ...updates }));
       }
       setShowEditForm(false);
     } catch (error) {
+      console.error('BrotherProfile: Error updating brother:', error);
       alert('Error updating brother: ' + error.message);
     } finally {
       setUpdateLoading(false);
     }
   };
 
+  const handleBrotherDelete = async () => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${currentBrother.name}? This action cannot be undone and will also delete all interaction history.`
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+      console.log('BrotherProfile: Deleting brother:', currentBrother.id);
+      if (onBrotherDelete) {
+        await onBrotherDelete(currentBrother.id);
+        console.log('BrotherProfile: Brother delete completed');
+        onClose(); // Close the profile after deletion
+      }
+    } catch (error) {
+      console.error('BrotherProfile: Error deleting brother:', error);
+      alert('Error deleting brother: ' + error.message);
+    }
+  };
+
   // Handle call functionality
   const handleCall = () => {
-    if (brother.phone) {
-      window.open(`tel:${brother.phone}`, '_self');
+    if (currentBrother.phone) {
+      window.open(`tel:${currentBrother.phone}`, '_self');
       // Log the call attempt
       setTimeout(() => {
         setEditingInteraction({
-          brotherId: brother.id,
+          brotherId: currentBrother.id,
           method: 'call',
           date: new Date().toISOString().split('T')[0],
           time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
@@ -109,12 +193,12 @@ const BrotherProfile = ({ brother, onClose, onBrotherUpdate }) => {
 
   // Handle text functionality
   const handleText = () => {
-    if (brother.phone) {
-      window.open(`sms:${brother.phone}`, '_self');
+    if (currentBrother.phone) {
+      window.open(`sms:${currentBrother.phone}`, '_self');
       // Log the text attempt
       setTimeout(() => {
         setEditingInteraction({
-          brotherId: brother.id,
+          brotherId: currentBrother.id,
           method: 'text',
           date: new Date().toISOString().split('T')[0],
           time: new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' }),
@@ -182,10 +266,19 @@ const BrotherProfile = ({ brother, onClose, onBrotherUpdate }) => {
                 <X className="w-5 h-5" />
               </button>
               
+              {/* Delete Button */}
+              <button
+                onClick={handleBrotherDelete}
+                className="absolute top-4 right-20 text-white hover:text-red-200 bg-red-500 bg-opacity-30 rounded-full p-2 transition-colors"
+                title="Delete Brother"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+              
               {/* Edit Button */}
               <button
                 onClick={() => setShowEditForm(true)}
-                className="absolute top-4 right-12 text-white hover:text-gray-200 bg-white bg-opacity-20 rounded-full p-2"
+                className="absolute top-4 right-12 text-white hover:text-gray-200 bg-white bg-opacity-20 rounded-full p-2 transition-colors"
                 title="Edit Brother Details"
               >
                 <Edit className="w-4 h-4" />
@@ -194,14 +287,14 @@ const BrotherProfile = ({ brother, onClose, onBrotherUpdate }) => {
               <div className="flex items-center space-x-4">
                 <div className="w-16 h-16 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
                   <span className="text-white font-bold text-xl">
-                    {getInitials(brother.name)}
+                    {getInitials(currentBrother.name)}
                   </span>
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold">{brother.name}</h2>
+                  <h2 className="text-xl font-semibold">{currentBrother.name}</h2>
                   <div className="flex items-center space-x-2 mt-1">
                     <MapPin className="w-4 h-4" />
-                    <span className="text-sm">{brother.location || 'Location not set'}</span>
+                    <span className="text-sm">{currentBrother.location || 'Location not set'}</span>
                   </div>
                 </div>
               </div>
@@ -247,8 +340,8 @@ const BrotherProfile = ({ brother, onClose, onBrotherUpdate }) => {
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
                   <Clock className="w-3 h-3" />
                   <span>
-                    {brother.lastContact 
-                      ? `${getDaysAgo(brother.lastContact)} days ago`
+                    {currentBrother.lastContact 
+                      ? `${getDaysAgo(currentBrother.lastContact)} days ago`
                       : 'Never contacted'
                     }
                   </span>
@@ -257,7 +350,7 @@ const BrotherProfile = ({ brother, onClose, onBrotherUpdate }) => {
               <div className="text-right">
                 <p className="text-xs text-gray-500">Method</p>
                 <p className="text-sm font-medium text-gray-700">
-                  {brother.lastContactMethod || 'N/A'}
+                  {currentBrother.lastContactMethod || 'N/A'}
                 </p>
               </div>
             </div>
@@ -270,7 +363,7 @@ const BrotherProfile = ({ brother, onClose, onBrotherUpdate }) => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 py-3 px-4 text-sm font-medium ${
+                  className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
                     activeTab === tab.id
                       ? 'text-green-600 border-b-2 border-green-600 bg-green-50'
                       : 'text-gray-500 hover:text-gray-700'
@@ -290,43 +383,43 @@ const BrotherProfile = ({ brother, onClose, onBrotherUpdate }) => {
                 <div>
                   <h3 className="text-sm font-medium text-gray-900 mb-2">Contact Information</h3>
                   <div className="space-y-2">
-                    {brother.phone && (
+                    {currentBrother.phone && (
                       <div className="flex items-center space-x-2 text-sm">
                         <Phone className="w-4 h-4 text-gray-400" />
-                        <span>{brother.phone}</span>
+                        <span>{currentBrother.phone}</span>
                       </div>
                     )}
-                    {brother.email && (
+                    {currentBrother.email && (
                       <div className="flex items-center space-x-2 text-sm">
                         <Mail className="w-4 h-4 text-gray-400" />
-                        <span>{brother.email}</span>
+                        <span>{currentBrother.email}</span>
                       </div>
                     )}
-                    {brother.location && (
+                    {currentBrother.location && (
                       <div className="flex items-center space-x-2 text-sm">
                         <MapPin className="w-4 h-4 text-gray-400" />
-                        <span>{brother.location}</span>
+                        <span>{currentBrother.location}</span>
                       </div>
                     )}
                   </div>
                 </div>
 
                 {/* Preferences */}
-                {brother.preferences?.preferredContact && (
+                {currentBrother.preferences?.preferredContact && (
                   <div>
                     <h3 className="text-sm font-medium text-gray-900 mb-2">Preferences</h3>
                     <div className="text-sm text-gray-600">
-                      Preferred contact: {brother.preferences.preferredContact}
+                      Preferred contact: {currentBrother.preferences.preferredContact}
                     </div>
                   </div>
                 )}
 
                 {/* Notes */}
-                {brother.notes && (
+                {currentBrother.notes && (
                   <div>
                     <h3 className="text-sm font-medium text-gray-900 mb-2">Notes</h3>
                     <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">
-                      {brother.notes}
+                      {currentBrother.notes}
                     </div>
                   </div>
                 )}
@@ -388,7 +481,7 @@ const BrotherProfile = ({ brother, onClose, onBrotherUpdate }) => {
             {activeTab === 'notes' && (
               <div>
                 <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md min-h-[100px]">
-                  {brother.notes || 'No notes added yet. Click the edit button to add notes.'}
+                  {currentBrother.notes || 'No notes added yet. Click the edit button to add notes.'}
                 </div>
               </div>
             )}
@@ -399,7 +492,7 @@ const BrotherProfile = ({ brother, onClose, onBrotherUpdate }) => {
       {/* Edit Form Modal */}
       {showEditForm && (
         <EditBrotherForm
-          brother={brother}
+          brother={currentBrother}
           onSave={handleBrotherSave}
           onClose={() => setShowEditForm(false)}
           loading={updateLoading}
@@ -409,7 +502,7 @@ const BrotherProfile = ({ brother, onClose, onBrotherUpdate }) => {
       {/* Log Interaction Modal */}
       {showLogInteraction && (
         <LogInteraction
-          brotherId={brother.id}
+          brotherId={currentBrother.id}
           editingInteraction={editingInteraction}
           onClose={() => {
             setShowLogInteraction(false);
