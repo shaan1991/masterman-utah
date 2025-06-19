@@ -1,4 +1,4 @@
-// ===== src/components/dashboard/ContactSuggestions.js =====
+// ===== Fixed src/components/dashboard/ContactSuggestions.js =====
 import React from 'react';
 import { Phone, MessageSquare, Clock } from 'lucide-react';
 import { getContactPriority } from '../../utils/contactHelpers';
@@ -19,6 +19,12 @@ const ContactSuggestions = ({ brothers = [], onNavigate }) => {
     return 'Recent';
   };
 
+  // Helper function to trim notes text
+  const trimNotes = (notes) => {
+    if (!notes) return '';
+    return notes.length > 40 ? notes.substring(0, 40) + '...' : notes;
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-sm border">
       <div className="p-4 border-b">
@@ -36,8 +42,8 @@ const ContactSuggestions = ({ brothers = [], onNavigate }) => {
             const daysAgo = getDaysAgo(brother.lastContact);
             return (
               <div key={brother.id} className="p-4 flex items-center justify-between">
-                <div className="flex-1">
-                  <h4 className="font-medium text-gray-800">{brother.name}</h4>
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-medium text-gray-800 truncate">{brother.name}</h4>
                   <div className="flex items-center space-x-2 mt-1">
                     <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(daysAgo)}`}>
                       {getStatusText(daysAgo)}
@@ -49,12 +55,12 @@ const ContactSuggestions = ({ brothers = [], onNavigate }) => {
                   </div>
                   {brother.notes && (
                     <p className="text-xs text-gray-500 mt-1 truncate">
-                      {brother.notes}
+                      {trimNotes(brother.notes)}
                     </p>
                   )}
                 </div>
                 
-                <div className="flex space-x-2">
+                <div className="flex space-x-2 ml-2">
                   <button className="p-2 bg-green-100 text-green-600 rounded-full hover:bg-green-200">
                     <Phone className="w-4 h-4" />
                   </button>

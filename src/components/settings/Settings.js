@@ -1,10 +1,11 @@
-// src/components/settings/Settings.js - FIXED WITH WORKING LOGOUT
+// ===== Updated src/components/settings/Settings.js =====
 import React, { useState } from 'react';
 import { User, Bell, Shield, LogOut, Cog, Share2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import ContactPreloadSection from './ContactPreloadSection';
 
 const Settings = () => {
-  const { user, signOut } = useAuth(); // FIXED: Now getting signOut from context
+  const { user, signOut } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [notifications, setNotifications] = useState({
     duaRequests: true,
@@ -35,7 +36,6 @@ const Settings = () => {
       if (navigator.share) {
         await navigator.share(shareData);
       } else {
-        // Fallback for browsers that don't support Web Share API
         navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
         alert('Invite link copied to clipboard!');
       }
@@ -44,7 +44,6 @@ const Settings = () => {
     }
   };
 
-  // BULLETPROOF LOGOUT HANDLER
   const handleSignOut = async () => {
     if (!window.confirm('Are you sure you want to sign out?')) {
       return;
@@ -62,13 +61,10 @@ const Settings = () => {
         alert(`Logout failed: ${result.error}`);
       } else {
         console.log('Settings: Logout successful');
-        // Page will reload automatically from AuthContext
       }
     } catch (error) {
       console.error('Settings: Unexpected logout error:', error);
       alert(`Unexpected error during logout: ${error.message}`);
-      
-      // Force reload as fallback
       window.location.reload();
     } finally {
       setIsSigningOut(false);
@@ -86,115 +82,104 @@ const Settings = () => {
       </div>
 
       {/* Profile Section */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
+      <div className="bg-white rounded-lg shadow-sm border">
+        <div className="p-4 border-b">
+          <div className="flex items-center space-x-2">
             <User className="w-5 h-5 text-gray-600" />
-            <h2 className="text-lg font-semibold text-gray-800">Profile</h2>
+            <h3 className="font-semibold text-gray-800">Profile</h3>
           </div>
         </div>
-
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-            <p className="text-gray-800">{profile.name}</p>
-            <p className="text-xs text-gray-500 mt-1">From Google account</p>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <p className="text-gray-800">{profile.email}</p>
-            <p className="text-xs text-gray-500 mt-1">From Google account</p>
+        <div className="p-4">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+              <User className="w-6 h-6 text-green-600" />
+            </div>
+            <div>
+              <h4 className="font-medium text-gray-800">{profile.name}</h4>
+              <p className="text-sm text-gray-600">{profile.email}</p>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Notifications Section */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Bell className="w-5 h-5 text-gray-600" />
-          <h2 className="text-lg font-semibold text-gray-800">Notifications</h2>
-        </div>
+      {/* Contact Preload Section - NEW */}
+      <ContactPreloadSection />
 
-        <div className="space-y-3">
+      {/* Notifications Section */}
+      <div className="bg-white rounded-lg shadow-sm border">
+        <div className="p-4 border-b">
+          <div className="flex items-center space-x-2">
+            <Bell className="w-5 h-5 text-gray-600" />
+            <h3 className="font-semibold text-gray-800">Notifications</h3>
+          </div>
+        </div>
+        <div className="p-4 space-y-4">
           {Object.entries(notifications).map(([key, value]) => (
-            <div key={key} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div key={key} className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-800 capitalize">
                   {key.replace(/([A-Z])/g, ' $1').trim()}
                 </p>
-                <p className="text-xs text-gray-600">
-                  {key === 'duaRequests' && 'Get notified of new dua requests'}
-                  {key === 'weeklyReminders' && 'Weekly brotherhood check-ins'}
-                  {key === 'announcements' && 'New announcement notifications'}
-                </p>
               </div>
-              <button
-                onClick={() => handleNotificationToggle(key)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 ${
-                  value ? 'bg-green-600' : 'bg-gray-200'
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    value ? 'translate-x-6' : 'translate-x-1'
-                  }`}
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={value}
+                  onChange={() => handleNotificationToggle(key)}
+                  className="sr-only peer"
                 />
-              </button>
+                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+              </label>
             </div>
           ))}
         </div>
       </div>
 
       {/* Privacy Section */}
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Shield className="w-5 h-5 text-gray-600" />
-          <h2 className="text-lg font-semibold text-gray-800">Privacy</h2>
+      <div className="bg-white rounded-lg shadow-sm border">
+        <div className="p-4 border-b">
+          <div className="flex items-center space-x-2">
+            <Shield className="w-5 h-5 text-gray-600" />
+            <h3 className="font-semibold text-gray-800">Privacy</h3>
+          </div>
         </div>
+        <div className="p-4">
+          <p className="text-sm text-gray-600">
+            Your data is protected according to Islamic principles of privacy and confidentiality.
+          </p>
+        </div>
+      </div>
 
-        <div className="space-y-3">
-          <div className="p-3 bg-gray-50 rounded-lg">
-            <p className="text-sm font-medium text-gray-800">Profile Visibility</p>
-            <p className="text-xs text-gray-600 mt-1">Your profile is visible to brotherhood members only</p>
+      {/* Share Section */}
+      <div className="bg-white rounded-lg shadow-sm border">
+        <div className="p-4 border-b">
+          <div className="flex items-center space-x-2">
+            <Share2 className="w-5 h-5 text-gray-600" />
+            <h3 className="font-semibold text-gray-800">Share Brotherhood</h3>
           </div>
-          
-          <div className="p-3 bg-gray-50 rounded-lg">
-            <p className="text-sm font-medium text-gray-800">Contact Information</p>
-            <p className="text-xs text-gray-600 mt-1">Phone and email are shared with verified brothers only</p>
-          </div>
-
-          {/* FIXED LOGOUT BUTTON */}
+        </div>
+        <div className="p-4">
           <button
-            onClick={handleSignOut}
-            disabled={isSigningOut}
-            className={`w-full p-3 flex items-center justify-center gap-2 text-red-600 hover:bg-red-50 border border-red-200 rounded-lg transition-colors mt-4 ${
-              isSigningOut ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
+            onClick={handleInvite}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm"
           >
-            <LogOut className="w-4 h-4" />
-            <span className="text-sm font-medium">
-              {isSigningOut ? 'Signing Out...' : 'Sign Out'}
-            </span>
+            Invite Brothers to Join
           </button>
         </div>
       </div>
 
-      {/* Invite Section */}
+      {/* Sign Out Section */}
       <div className="bg-white rounded-lg shadow-sm border">
-        <button
-          onClick={handleInvite}
-          className="w-full p-4 flex items-center justify-center gap-3 text-blue-600 hover:bg-blue-50 transition-colors rounded-lg"
-        >
-          <Share2 className="w-5 h-5" />
-          <span className="font-medium">Invite Brothers</span>
-        </button>
-      </div>
-
-      {/* App Info */}
-      <div className="text-center text-sm text-gray-500">
-        <p>Brotherhood App v1.0.0</p>
-        <p className="text-xs mt-1">May Allah bless our brotherhood</p>
+        <div className="p-4">
+          <button
+            onClick={handleSignOut}
+            disabled={isSigningOut}
+            className="w-full bg-red-600 text-white py-3 px-4 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center space-x-2"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>{isSigningOut ? 'Signing Out...' : 'Sign Out'}</span>
+          </button>
+        </div>
       </div>
     </div>
   );
